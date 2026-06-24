@@ -52,12 +52,15 @@ The frontend starts at `http://localhost:3000`.
 
 ## Current Stage
 
-Stage 1: Basic Setup
+Stage 2: Request Builder
 
 - Monorepo folders for frontend and backend
 - FastAPI app with CORS, SQLite initialization, seed data, and bootstrap endpoint
 - SQLite schema for workspaces, collections, saved requests, environments, variables, and history
 - Next.js workspace shell with Postman-like panes, tabs, request builder controls, environment selector, collection/history sidebar, and response viewer
+- Per-tab request drafts with local saved snapshots and unsaved-change indicators
+- URL input synced with the query parameter key/value table
+- Headers editor, authorization editor, and request body modes for none, raw, form-data, and x-www-form-urlencoded
 
 ## Database Schema Overview
 

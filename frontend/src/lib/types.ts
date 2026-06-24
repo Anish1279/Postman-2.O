@@ -29,9 +29,7 @@ export interface ResponseSnapshot {
   body: string;
 }
 
-export interface RequestDraft {
-  id: string;
-  collectionId?: string;
+export interface RequestDraftSnapshot {
   name: string;
   method: HttpMethod;
   url: string;
@@ -39,8 +37,16 @@ export interface RequestDraft {
   headers: KeyValuePair[];
   bodyMode: BodyMode;
   rawBody: string;
+  formData: KeyValuePair[];
+  urlEncodedBody: KeyValuePair[];
   auth: AuthConfig;
+}
+
+export interface RequestDraft extends RequestDraftSnapshot {
+  id: string;
+  collectionId?: string;
   response?: ResponseSnapshot;
+  savedSnapshot: RequestDraftSnapshot | null;
   isDirty: boolean;
 }
 
@@ -72,4 +78,3 @@ export interface WorkspaceLayout {
   horizontal: number[];
   vertical: number[];
 }
-

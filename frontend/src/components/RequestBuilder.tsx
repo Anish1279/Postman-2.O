@@ -6,6 +6,12 @@ import { bodyModes, httpMethods, useWorkspaceStore } from "@/lib/workspace-store
 import type { AuthConfig, BodyMode, BuilderTab, HttpMethod } from "@/lib/types";
 
 const builderTabs: BuilderTab[] = ["params", "authorization", "headers", "body"];
+const bodyModeLabels: Record<BodyMode, string> = {
+  none: "none",
+  raw: "raw",
+  "form-data": "form-data",
+  "x-www-form-urlencoded": "x-www-form-urlencoded"
+};
 
 function formatTabLabel(tab: BuilderTab): string {
   return tab === "params" ? "Params" : tab === "authorization" ? "Authorization" : tab === "headers" ? "Headers" : "Body";
@@ -21,6 +27,7 @@ export function RequestBuilder() {
   const updateKeyValue = useWorkspaceStore((state) => state.updateKeyValue);
   const addKeyValue = useWorkspaceStore((state) => state.addKeyValue);
   const removeKeyValue = useWorkspaceStore((state) => state.removeKeyValue);
+  const markActiveRequestSaved = useWorkspaceStore((state) => state.markActiveRequestSaved);
 
   if (!activeRequest) {
     return null;
@@ -49,7 +56,7 @@ export function RequestBuilder() {
           onChange={(event) => updateActiveRequest({ url: event.target.value })}
           placeholder="Enter request URL"
         />
-        <button className="secondary-button" title="Save request">
+        <button className="secondary-button" title="Save request draft" onClick={markActiveRequestSaved}>
           <Save size={16} />
           Save
         </button>
@@ -159,16 +166,42 @@ export function RequestBuilder() {
                   className={activeRequest.bodyMode === mode ? "active" : ""}
                   onClick={() => updateActiveRequest({ bodyMode: mode as BodyMode })}
                 >
-                  {mode}
+                  {bodyModeLabels[mode]}
                 </button>
               ))}
             </div>
-            <textarea
-              value={activeRequest.rawBody}
-              onChange={(event) => updateActiveRequest({ rawBody: event.target.value })}
-              placeholder={activeRequest.bodyMode === "none" ? "" : "{ }"}
-              disabled={activeRequest.bodyMode === "none"}
-            />
+
+            {activeRequest.bodyMode === "none" ? <div className="empty-body-state">No body</div> : null}
+
+            {activeRequest.bodyMode === "raw" ? (
+              <textarea
+                value={activeRequest.rawBody}
+                onChange={(event) => updateActiveRequest({ rawBody: event.target.value })}
+                placeholder="{ }"
+              />
+            ) : null}
+
+            {activeRequest.bodyMode === "form-data" ? (
+              <KeyValueTable
+                rows={activeRequest.formData}
+                onChange={(rowId, patch) => updateKeyValue("formData", rowId, patch)}
+                onAdd={() => addKeyValue("formData")}
+                onRemove={(rowId) => removeKeyValue("formData", rowId)}
+                keyPlaceholder="Field"
+                valuePlaceholder="Value"
+              />
+            ) : null}
+
+            {activeRequest.bodyMode === "x-www-form-urlencoded" ? (
+              <KeyValueTable
+                rows={activeRequest.urlEncodedBody}
+                onChange={(rowId, patch) => updateKeyValue("urlEncodedBody", rowId, patch)}
+                onAdd={() => addKeyValue("urlEncodedBody")}
+                onRemove={(rowId) => removeKeyValue("urlEncodedBody", rowId)}
+                keyPlaceholder="Key"
+                valuePlaceholder="Value"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

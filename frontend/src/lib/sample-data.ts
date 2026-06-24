@@ -1,4 +1,33 @@
-import type { CollectionNode, Environment, HistoryEntry, RequestDraft } from "@/lib/types";
+import type { CollectionNode, Environment, HistoryEntry, RequestDraft, RequestDraftSnapshot } from "@/lib/types";
+
+type SeedRequest = Omit<RequestDraft, "savedSnapshot" | "isDirty">;
+
+function cloneRows(rows: RequestDraftSnapshot["headers"]): RequestDraftSnapshot["headers"] {
+  return rows.map((row) => ({ ...row }));
+}
+
+function makeSavedSnapshot(request: SeedRequest): RequestDraftSnapshot {
+  return {
+    name: request.name,
+    method: request.method,
+    url: request.url,
+    queryParams: cloneRows(request.queryParams),
+    headers: cloneRows(request.headers),
+    bodyMode: request.bodyMode,
+    rawBody: request.rawBody,
+    formData: cloneRows(request.formData),
+    urlEncodedBody: cloneRows(request.urlEncodedBody),
+    auth: { ...request.auth }
+  };
+}
+
+function savedRequest(request: SeedRequest): RequestDraft {
+  return {
+    ...request,
+    savedSnapshot: makeSavedSnapshot(request),
+    isDirty: false
+  };
+}
 
 export const sampleCollections: CollectionNode[] = [
   {
@@ -52,7 +81,7 @@ export const sampleEnvironments: Environment[] = [
 ];
 
 export const sampleTabs: RequestDraft[] = [
-  {
+  savedRequest({
     id: "tab-list-posts",
     collectionId: "collection-list-posts",
     name: "List posts",
@@ -62,8 +91,9 @@ export const sampleTabs: RequestDraft[] = [
     headers: [{ id: "header-accept", key: "Accept", value: "application/json", enabled: true }],
     bodyMode: "none",
     rawBody: "",
+    formData: [],
+    urlEncodedBody: [],
     auth: { type: "none" },
-    isDirty: false,
     response: {
       status: 200,
       statusText: "OK",
@@ -82,8 +112,8 @@ export const sampleTabs: RequestDraft[] = [
         2
       )
     }
-  },
-  {
+  }),
+  savedRequest({
     id: "tab-create-post",
     collectionId: "collection-create-post",
     name: "Create post",
@@ -93,9 +123,26 @@ export const sampleTabs: RequestDraft[] = [
     headers: [{ id: "header-content-type", key: "Content-Type", value: "application/json", enabled: true }],
     bodyMode: "raw",
     rawBody: '{\n  "title": "Scaler assignment",\n  "body": "Postman clone",\n  "userId": 1\n}',
+    formData: [],
+    urlEncodedBody: [],
     auth: { type: "none" },
-    isDirty: false
-  }
+    response: undefined
+  }),
+  savedRequest({
+    id: "tab-echo-headers",
+    collectionId: "collection-echo-headers",
+    name: "Echo headers",
+    method: "GET",
+    url: "https://httpbin.org/headers",
+    queryParams: [],
+    headers: [{ id: "header-demo", key: "X-Demo-Client", value: "postman-clone", enabled: true }],
+    bodyMode: "none",
+    rawBody: "",
+    formData: [],
+    urlEncodedBody: [],
+    auth: { type: "bearer", token: "{{token}}" },
+    response: undefined
+  })
 ];
 
 export const sampleHistory: HistoryEntry[] = [
@@ -118,4 +165,3 @@ export const sampleHistory: HistoryEntry[] = [
     requestedAt: "Today, 9:44 PM"
   }
 ];
-

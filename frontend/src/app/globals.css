@@ -677,6 +677,7 @@ button {
   cursor: pointer;
   height: 30px;
   padding: 0 12px;
+  white-space: nowrap;
 }
 
 .segmented-control button.active {
@@ -700,6 +701,17 @@ button {
 .body-editor textarea:disabled {
   background: #ebe5dc;
   color: var(--muted);
+}
+
+.empty-body-state {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  display: flex;
+  min-height: 160px;
+  justify-content: center;
 }
 
 .response-panel {
@@ -799,4 +811,3 @@ button {
     font-size: 0;
   }
 }
-
