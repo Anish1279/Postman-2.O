@@ -20,13 +20,20 @@ export interface KeyValuePair {
   enabled: boolean;
 }
 
+export interface ResponseError {
+  type: string;
+  message: string;
+}
+
 export interface ResponseSnapshot {
+  ok: boolean;
   status: number;
   statusText: string;
   timeMs: number;
   sizeBytes: number;
   headers: KeyValuePair[];
   body: string;
+  error?: ResponseError;
 }
 
 export interface RequestDraftSnapshot {
@@ -47,6 +54,7 @@ export interface RequestDraft extends RequestDraftSnapshot {
   collectionId?: string;
   response?: ResponseSnapshot;
   savedSnapshot: RequestDraftSnapshot | null;
+  isSending: boolean;
   isDirty: boolean;
 }
 

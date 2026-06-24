@@ -13,11 +13,13 @@ import type {
   KeyValuePair,
   RequestDraft,
   RequestDraftSnapshot,
+  ResponseSnapshot,
   ResponseView,
   SidebarMode
 } from "@/lib/types";
 
 type KeyValueKind = "queryParams" | "headers" | "formData" | "urlEncodedBody";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 interface WorkspaceState {
   activeSidebar: SidebarMode;
@@ -42,6 +44,7 @@ interface WorkspaceState {
   addKeyValue: (kind: KeyValueKind) => void;
   removeKeyValue: (kind: KeyValueKind, rowId: string) => void;
   markActiveRequestSaved: () => void;
+  sendActiveRequest: () => Promise<void>;
   openRequest: (requestId: string) => void;
 }
 
@@ -134,6 +137,26 @@ function cloneDraft(tab: RequestDraft): RequestDraft {
         }
       : undefined,
     savedSnapshot: tab.savedSnapshot ? cloneSnapshot(tab.savedSnapshot) : null
+  };
+}
+
+function makeRunnerPayload(tab: RequestDraft): RequestDraftSnapshot {
+  return makeSnapshot(tab);
+}
+
+function makeClientErrorResponse(message: string, timeMs: number): ResponseSnapshot {
+  return {
+    ok: false,
+    status: 0,
+    statusText: "Request Error",
+    timeMs,
+    sizeBytes: 0,
+    headers: [],
+    body: "",
+    error: {
+      type: "client_error",
+      message
+    }
   };
 }
 
@@ -256,6 +279,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       urlEncodedBody: [],
       auth: { type: "none" },
       savedSnapshot: null,
+      isSending: false,
       isDirty: true
     };
 
@@ -319,6 +343,66 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         isDirty: false
       }))
     }));
+  },
+
+  sendActiveRequest: async () => {
+    const { activeTabId, openTabs } = get();
+    const tab = openTabs.find((item) => item.id === activeTabId);
+    if (!tab || tab.isSending) {
+      return;
+    }
+
+    const startedAt = performance.now();
+
+    set((state) => ({
+      openTabs: updateActiveTab(state.openTabs, activeTabId, (item) => ({
+        ...item,
+        isSending: true
+      }))
+    }));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/runner/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(makeRunnerPayload(tab))
+      });
+
+      let snapshot: ResponseSnapshot;
+      if (response.ok) {
+        snapshot = (await response.json()) as ResponseSnapshot;
+      } else {
+        snapshot = makeClientErrorResponse(
+          `The backend runner returned HTTP ${response.status} ${response.statusText}.`,
+          Math.round(performance.now() - startedAt)
+        );
+      }
+
+      set((state) => ({
+        openTabs: updateActiveTab(state.openTabs, activeTabId, (item) => ({
+          ...item,
+          response: snapshot,
+          isSending: false
+        })),
+        responseView: "pretty"
+      }));
+    } catch {
+      const snapshot = makeClientErrorResponse(
+        `Could not reach the FastAPI runner at ${API_BASE_URL}. Start the backend and try again.`,
+        Math.round(performance.now() - startedAt)
+      );
+
+      set((state) => ({
+        openTabs: updateActiveTab(state.openTabs, activeTabId, (item) => ({
+          ...item,
+          response: snapshot,
+          isSending: false
+        })),
+        responseView: "pretty"
+      }));
+    }
   },
 
   openRequest: (requestId) => {

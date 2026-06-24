@@ -514,6 +514,11 @@ button {
   background: var(--accent-strong);
 }
 
+.send-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .builder-tabs,
 .response-toolbar {
   align-items: center;
@@ -759,6 +764,11 @@ button {
   min-height: 100%;
   padding: 14px;
   white-space: pre-wrap;
+}
+
+.response-body pre.request-error {
+  background: #2a1717;
+  color: #ffd6d6;
 }
 
 .empty-response {

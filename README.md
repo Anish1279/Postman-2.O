@@ -39,6 +39,7 @@ Useful endpoints:
 
 - `GET /api/health`
 - `GET /api/bootstrap`
+- `POST /api/runner/send`
 
 ### Frontend
 
@@ -52,7 +53,7 @@ The frontend starts at `http://localhost:3000`.
 
 ## Current Stage
 
-Stage 2: Request Builder
+Stage 3: Real Request Runner
 
 - Monorepo folders for frontend and backend
 - FastAPI app with CORS, SQLite initialization, seed data, and bootstrap endpoint
@@ -61,6 +62,11 @@ Stage 2: Request Builder
 - Per-tab request drafts with local saved snapshots and unsaved-change indicators
 - URL input synced with the query parameter key/value table
 - Headers editor, authorization editor, and request body modes for none, raw, form-data, and x-www-form-urlencoded
+- FastAPI request runner that executes outbound HTTP requests with `httpx.AsyncClient`
+- Response viewer displays real status, latency, size, headers, body, and request-level errors
+- Basic SSRF protection blocks local, private, link-local, reserved, and metadata destinations
+
+Stage note: request history is still sample/local data in this stage. Persisting each send to SQLite is planned for Stage 6.
 
 ## Database Schema Overview
 

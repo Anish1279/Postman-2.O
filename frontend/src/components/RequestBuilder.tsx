@@ -28,6 +28,7 @@ export function RequestBuilder() {
   const addKeyValue = useWorkspaceStore((state) => state.addKeyValue);
   const removeKeyValue = useWorkspaceStore((state) => state.removeKeyValue);
   const markActiveRequestSaved = useWorkspaceStore((state) => state.markActiveRequestSaved);
+  const sendActiveRequest = useWorkspaceStore((state) => state.sendActiveRequest);
 
   if (!activeRequest) {
     return null;
@@ -60,9 +61,9 @@ export function RequestBuilder() {
           <Save size={16} />
           Save
         </button>
-        <button className="send-button" title="Send request">
+        <button className="send-button" title="Send request" onClick={sendActiveRequest} disabled={activeRequest.isSending}>
           <Send size={16} />
-          Send
+          {activeRequest.isSending ? "Sending" : "Send"}
         </button>
       </div>
 

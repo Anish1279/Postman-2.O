@@ -95,6 +95,7 @@ export const sampleTabs: RequestDraft[] = [
     urlEncodedBody: [],
     auth: { type: "none" },
     response: {
+      ok: true,
       status: 200,
       statusText: "OK",
       timeMs: 182,
@@ -111,7 +112,8 @@ export const sampleTabs: RequestDraft[] = [
         null,
         2
       )
-    }
+    },
+    isSending: false
   }),
   savedRequest({
     id: "tab-create-post",
@@ -126,7 +128,8 @@ export const sampleTabs: RequestDraft[] = [
     formData: [],
     urlEncodedBody: [],
     auth: { type: "none" },
-    response: undefined
+    response: undefined,
+    isSending: false
   }),
   savedRequest({
     id: "tab-echo-headers",
@@ -141,7 +144,8 @@ export const sampleTabs: RequestDraft[] = [
     formData: [],
     urlEncodedBody: [],
     auth: { type: "bearer", token: "{{token}}" },
-    response: undefined
+    response: undefined,
+    isSending: false
   })
 ];
 
