@@ -27,7 +27,7 @@ export function RequestBuilder() {
   const updateKeyValue = useWorkspaceStore((state) => state.updateKeyValue);
   const addKeyValue = useWorkspaceStore((state) => state.addKeyValue);
   const removeKeyValue = useWorkspaceStore((state) => state.removeKeyValue);
-  const markActiveRequestSaved = useWorkspaceStore((state) => state.markActiveRequestSaved);
+  const saveActiveRequest = useWorkspaceStore((state) => state.saveActiveRequest);
   const sendActiveRequest = useWorkspaceStore((state) => state.sendActiveRequest);
 
   if (!activeRequest) {
@@ -57,7 +57,7 @@ export function RequestBuilder() {
           onChange={(event) => updateActiveRequest({ url: event.target.value })}
           placeholder="Enter request URL"
         />
-        <button className="secondary-button" title="Save request draft" onClick={markActiveRequestSaved}>
+        <button className="secondary-button" title="Save request to collection" onClick={saveActiveRequest}>
           <Save size={16} />
           Save
         </button>

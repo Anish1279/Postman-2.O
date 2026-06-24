@@ -66,8 +66,6 @@ Stage 3: Real Request Runner
 - Response viewer displays real status, latency, size, headers, body, and request-level errors
 - Basic SSRF protection blocks local, private, link-local, reserved, and metadata destinations
 
-Stage note: request history is still sample/local data in this stage. Persisting each send to SQLite is planned for Stage 6.
-
 ## Database Schema Overview
 
 - `workspaces`: default logged-in workspace container

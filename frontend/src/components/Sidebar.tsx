@@ -1,29 +1,201 @@
 "use client";
 
-import { Clock3, FileText, Folder, History, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Clock3, Edit2, FileText, Folder, FolderPlus, FilePlus, History, MoreHorizontal, Plus, Search, Settings, Trash2, X } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { CollectionNode } from "@/lib/types";
 
-function CollectionTree({ nodes, depth = 0 }: { nodes: CollectionNode[]; depth?: number }) {
+// ---------------------------------------------------------------------------
+// Inline rename input
+// ---------------------------------------------------------------------------
+
+function InlineRenameInput({
+  initialValue,
+  onCommit,
+  onCancel,
+}: {
+  initialValue: string;
+  onCommit: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <input
+      ref={inputRef}
+      className="inline-rename-input"
+      value={value}
+      autoFocus
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        const trimmed = value.trim();
+        if (trimmed && trimmed !== initialValue) {
+          onCommit(trimmed);
+        } else {
+          onCancel();
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          const trimmed = value.trim();
+          if (trimmed && trimmed !== initialValue) {
+            onCommit(trimmed);
+          } else {
+            onCancel();
+          }
+        }
+        if (e.key === "Escape") {
+          onCancel();
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Context menu
+// ---------------------------------------------------------------------------
+
+interface ContextMenuState {
+  nodeId: number;
+  nodeType: "folder" | "request";
+  x: number;
+  y: number;
+}
+
+function ContextMenu({
+  state,
+  onClose,
+  onRename,
+  onDelete,
+  onAddFolder,
+  onAddRequest,
+}: {
+  state: ContextMenuState;
+  onClose: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  onAddFolder: () => void;
+  onAddRequest: () => void;
+}) {
+  return (
+    <>
+      <div className="context-menu-backdrop" onClick={onClose} />
+      <div className="context-menu" style={{ top: state.y, left: state.x }}>
+        {state.nodeType === "folder" ? (
+          <>
+            <button onClick={onAddRequest}>
+              <FilePlus size={14} />
+              Add Request
+            </button>
+            <button onClick={onAddFolder}>
+              <FolderPlus size={14} />
+              Add Folder
+            </button>
+            <div className="context-menu-separator" />
+          </>
+        ) : null}
+        <button onClick={onRename}>
+          <Edit2 size={14} />
+          Rename
+        </button>
+        <button className="danger" onClick={onDelete}>
+          <Trash2 size={14} />
+          Delete
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collection tree
+// ---------------------------------------------------------------------------
+
+function CollectionTree({
+  nodes,
+  depth = 0,
+  contextMenu,
+  setContextMenu,
+  renamingId,
+  setRenamingId,
+}: {
+  nodes: CollectionNode[];
+  depth?: number;
+  contextMenu: ContextMenuState | null;
+  setContextMenu: (state: ContextMenuState | null) => void;
+  renamingId: number | null;
+  setRenamingId: (id: number | null) => void;
+}) {
   const openRequest = useWorkspaceStore((state) => state.openRequest);
+  const renameCollectionNode = useWorkspaceStore((state) => state.renameCollectionNode);
 
   return (
     <div className="collection-tree">
       {nodes.map((node) => {
         const isFolder = node.type === "folder";
+        const isRenaming = renamingId === node.id;
+
         return (
           <div key={node.id}>
             <button
               className="tree-row"
               style={{ paddingLeft: `${12 + depth * 14}px` }}
-              onClick={() => node.requestId && openRequest(node.requestId)}
+              onClick={() => {
+                if (node.type === "request") {
+                  openRequest(node.id);
+                }
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({
+                  nodeId: node.id,
+                  nodeType: node.type,
+                  x: e.clientX,
+                  y: e.clientY,
+                });
+              }}
             >
               {isFolder ? <Folder size={15} /> : <FileText size={15} />}
-              <span>{node.name}</span>
-              <MoreHorizontal size={14} className="row-more" />
+              {isRenaming ? (
+                <InlineRenameInput
+                  initialValue={node.name}
+                  onCommit={(newName) => {
+                    renameCollectionNode(node.id, newName);
+                    setRenamingId(null);
+                  }}
+                  onCancel={() => setRenamingId(null)}
+                />
+              ) : (
+                <span>{node.name}</span>
+              )}
+              <MoreHorizontal
+                size={14}
+                className="row-more"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+                  setContextMenu({
+                    nodeId: node.id,
+                    nodeType: node.type,
+                    x: rect.right,
+                    y: rect.bottom,
+                  });
+                }}
+              />
             </button>
-            {isFolder && node.children?.length ? <CollectionTree nodes={node.children} depth={depth + 1} /> : null}
+            {isFolder && node.children?.length ? (
+              <CollectionTree
+                nodes={node.children}
+                depth={depth + 1}
+                contextMenu={contextMenu}
+                setContextMenu={setContextMenu}
+                renamingId={renamingId}
+                setRenamingId={setRenamingId}
+              />
+            ) : null}
           </div>
         );
       })}
@@ -31,12 +203,95 @@ function CollectionTree({ nodes, depth = 0 }: { nodes: CollectionNode[]; depth?:
   );
 }
 
+// ---------------------------------------------------------------------------
+// New collection dialog
+// ---------------------------------------------------------------------------
+
+function NewItemDialog({
+  onClose,
+  onCreateFolder,
+  onCreateRequest,
+}: {
+  onClose: () => void;
+  onCreateFolder: (name: string) => void;
+  onCreateRequest: (name: string) => void;
+}) {
+  const [mode, setMode] = useState<"folder" | "request">("folder");
+  const [name, setName] = useState("");
+
+  const handleSubmit = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (mode === "folder") {
+      onCreateFolder(trimmed);
+    } else {
+      onCreateRequest(trimmed);
+    }
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="dialog-backdrop" onClick={onClose} />
+      <div className="new-item-dialog">
+        <div className="dialog-header">
+          <h3>New Collection Item</h3>
+          <button className="icon-button compact" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        <div className="dialog-body">
+          <div className="segmented-control">
+            <button className={mode === "folder" ? "active" : ""} onClick={() => setMode("folder")}>
+              <Folder size={14} />
+              Folder
+            </button>
+            <button className={mode === "request" ? "active" : ""} onClick={() => setMode("request")}>
+              <FileText size={14} />
+              Request
+            </button>
+          </div>
+          <input
+            className="dialog-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={mode === "folder" ? "Folder name" : "Request name"}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Escape") onClose();
+            }}
+          />
+        </div>
+        <div className="dialog-footer">
+          <button className="secondary-button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="send-button" onClick={handleSubmit} disabled={!name.trim()}>
+            Create
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar
+// ---------------------------------------------------------------------------
+
 export function Sidebar() {
   const [search, setSearch] = useState("");
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [showNewDialog, setShowNewDialog] = useState(false);
   const activeSidebar = useWorkspaceStore((state) => state.activeSidebar);
   const setActiveSidebar = useWorkspaceStore((state) => state.setActiveSidebar);
   const collections = useWorkspaceStore((state) => state.collections);
   const history = useWorkspaceStore((state) => state.history);
+  const createFolder = useWorkspaceStore((state) => state.createFolder);
+  const createRequestInCollection = useWorkspaceStore((state) => state.createRequestInCollection);
+  const deleteCollectionNode = useWorkspaceStore((state) => state.deleteCollectionNode);
 
   const filteredHistory = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -45,6 +300,40 @@ export function Sidebar() {
     }
     return history.filter((item) => `${item.name} ${item.method} ${item.url}`.toLowerCase().includes(value));
   }, [history, search]);
+
+  const handleContextRename = useCallback(() => {
+    if (contextMenu) {
+      setRenamingId(contextMenu.nodeId);
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleContextDelete = useCallback(() => {
+    if (contextMenu) {
+      deleteCollectionNode(contextMenu.nodeId);
+      setContextMenu(null);
+    }
+  }, [contextMenu, deleteCollectionNode]);
+
+  const handleContextAddFolder = useCallback(() => {
+    if (contextMenu) {
+      const parentId = contextMenu.nodeId;
+      const name = prompt("Folder name:");
+      if (name?.trim()) {
+        createFolder(parentId, name.trim());
+      }
+      setContextMenu(null);
+    }
+  }, [contextMenu, createFolder]);
+
+  const handleContextAddRequest = useCallback(() => {
+    if (contextMenu) {
+      const parentId = contextMenu.nodeId;
+      const name = prompt("Request name:") ?? "Untitled Request";
+      createRequestInCollection(parentId, name.trim() || "Untitled Request");
+      setContextMenu(null);
+    }
+  }, [contextMenu, createRequestInCollection]);
 
   return (
     <aside className="sidebar">
@@ -69,14 +358,32 @@ export function Sidebar() {
 
       <div className="sidebar-heading">
         <span>{activeSidebar === "collections" ? "Collections" : "Recent"}</span>
-        <button className="icon-button compact" title="New">
-          <Plus size={15} />
-        </button>
+        {activeSidebar === "collections" ? (
+          <button className="icon-button compact" title="New collection item" onClick={() => setShowNewDialog(true)}>
+            <Plus size={15} />
+          </button>
+        ) : null}
       </div>
 
       <div className="sidebar-content">
         {activeSidebar === "collections" ? (
-          <CollectionTree nodes={collections} />
+          collections.length > 0 ? (
+            <CollectionTree
+              nodes={collections}
+              contextMenu={contextMenu}
+              setContextMenu={setContextMenu}
+              renamingId={renamingId}
+              setRenamingId={setRenamingId}
+            />
+          ) : (
+            <div className="empty-sidebar-state">
+              <p>No collections yet</p>
+              <button className="secondary-button compact" onClick={() => setShowNewDialog(true)}>
+                <Plus size={14} />
+                Create
+              </button>
+            </div>
+          )
         ) : (
           <div className="history-list">
             {filteredHistory.map((item) => (
@@ -103,7 +410,27 @@ export function Sidebar() {
           Settings
         </button>
       </div>
+
+      {/* Context menu */}
+      {contextMenu ? (
+        <ContextMenu
+          state={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onRename={handleContextRename}
+          onDelete={handleContextDelete}
+          onAddFolder={handleContextAddFolder}
+          onAddRequest={handleContextAddRequest}
+        />
+      ) : null}
+
+      {/* New item dialog */}
+      {showNewDialog ? (
+        <NewItemDialog
+          onClose={() => setShowNewDialog(false)}
+          onCreateFolder={(name) => createFolder(null, name)}
+          onCreateRequest={(name) => createRequestInCollection(null, name)}
+        />
+      ) : null}
     </aside>
   );
 }
-

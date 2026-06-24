@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { RequestBuilder } from "@/components/RequestBuilder";
 import { RequestTabs } from "@/components/RequestTabs";
 import { ResponsePanel } from "@/components/ResponsePanel";
 import { Sidebar } from "@/components/Sidebar";
 import { TopNav } from "@/components/TopNav";
+import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { WorkspaceLayout } from "@/lib/types";
 
 interface WorkspaceShellProps {
@@ -19,11 +20,28 @@ function persistLayout(layout: WorkspaceLayout) {
 
 export function WorkspaceShell({ defaultLayout }: WorkspaceShellProps) {
   const layoutRef = useRef<WorkspaceLayout>(defaultLayout);
+  const bootstrap = useWorkspaceStore((state) => state.bootstrap);
+  const isBootstrapped = useWorkspaceStore((state) => state.isBootstrapped);
+
+  useEffect(() => {
+    bootstrap();
+  }, [bootstrap]);
 
   const updateLayout = (patch: Partial<WorkspaceLayout>) => {
     layoutRef.current = { ...layoutRef.current, ...patch };
     persistLayout(layoutRef.current);
   };
+
+  if (!isBootstrapped) {
+    return (
+      <main className="workspace-shell">
+        <div className="bootstrap-loading">
+          <div className="loading-spinner" />
+          <p>Loading workspace…</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="workspace-shell">
@@ -59,4 +77,3 @@ export function WorkspaceShell({ defaultLayout }: WorkspaceShellProps) {
     </main>
   );
 }
-

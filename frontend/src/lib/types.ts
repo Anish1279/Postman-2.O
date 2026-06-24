@@ -51,7 +51,8 @@ export interface RequestDraftSnapshot {
 
 export interface RequestDraft extends RequestDraftSnapshot {
   id: string;
-  collectionId?: string;
+  /** The database collection node id that owns this saved request. */
+  collectionNodeId?: number;
   response?: ResponseSnapshot;
   savedSnapshot: RequestDraftSnapshot | null;
   isSending: boolean;
@@ -59,10 +60,12 @@ export interface RequestDraft extends RequestDraftSnapshot {
 }
 
 export interface CollectionNode {
-  id: string;
+  id: number;
+  parentId?: number | null;
   name: string;
   type: "folder" | "request";
-  requestId?: string;
+  /** Database request id (only for type === "request"). */
+  requestId?: number;
   children?: CollectionNode[];
 }
 
