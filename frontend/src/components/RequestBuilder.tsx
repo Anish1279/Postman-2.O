@@ -19,7 +19,7 @@ const bodyModeLabels: Record<BodyMode, string> = {
 };
 
 function formatTabLabel(tab: BuilderTab): string {
-  return tab === "params" ? "Params" : tab === "authorization" ? "Authorization" : tab === "headers" ? "Headers" : "Body";
+  return tab === "params" ? "Params" : tab === "authorization" ? "Authorization" : tab === "headers" ? "Headers" : tab === "body" ? "Body" : tab === "pre-request" ? "Pre-request" : "Tests";
 }
 
 export function RequestBuilder() {

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS requests (
     body_mode TEXT NOT NULL DEFAULT 'none',
     body_json TEXT NOT NULL DEFAULT '{}',
     auth_json TEXT NOT NULL DEFAULT '{"type":"none"}',
+    scripts_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
