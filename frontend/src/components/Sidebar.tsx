@@ -1,10 +1,12 @@
 "use client";
 
-import { Clock3, Edit2, FileText, Folder, FolderPlus, FilePlus, History, MoreHorizontal, Plus, Search, Settings, Trash2, X } from "lucide-react";
+import { Clock3, Edit2, FileText, Folder, FolderPlus, FilePlus, History, MoreHorizontal, Plus, Search, Settings, Trash2, X, Download, Upload } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { CollectionNode } from "@/lib/types";
 import { ComingSoonDialog } from "@/components/ComingSoonDialog";
+import { exportWorkspace, importWorkspace } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
 // ---------------------------------------------------------------------------
 // Inline rename input
@@ -359,12 +361,52 @@ export function Sidebar() {
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
       </div>
 
-      <div className="sidebar-heading">
+      <div className="sidebar-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>{activeSidebar === "collections" ? "Collections" : "Recent"}</span>
         {activeSidebar === "collections" ? (
-          <button className="icon-button compact" title="New collection item" onClick={() => setShowNewDialog(true)}>
-            <Plus size={15} />
-          </button>
+          <div style={{ display: "flex", gap: "4px" }}>
+            <button className="icon-button compact" title="Import Workspace" onClick={() => {
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "application/json";
+              fileInput.onchange = async (e: any) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  const data = JSON.parse(text);
+                  await importWorkspace(data);
+                  toast.success("Workspace imported successfully (Reload to see changes)");
+                  setTimeout(() => window.location.reload(), 1500);
+                } catch (err: any) {
+                  toast.error("Failed to import workspace: " + err.message);
+                }
+              };
+              fileInput.click();
+            }}>
+              <Upload size={14} />
+            </button>
+            <button className="icon-button compact" title="Export Workspace" onClick={async () => {
+              try {
+                const data = await exportWorkspace();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "postman_clone_workspace.json";
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Workspace exported");
+              } catch (err: any) {
+                toast.error("Failed to export workspace: " + err.message);
+              }
+            }}>
+              <Download size={14} />
+            </button>
+            <button className="icon-button compact" title="New collection item" onClick={() => setShowNewDialog(true)}>
+              <Plus size={15} />
+            </button>
+          </div>
         ) : null}
       </div>
 

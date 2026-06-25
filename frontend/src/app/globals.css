@@ -16,6 +16,24 @@
   --shadow: 0 1px 2px rgba(36, 31, 26, 0.08);
 }
 
+.dark {
+  --bg: #1e1e1e;
+  --surface: #252526;
+  --surface-subtle: #2d2d2d;
+  --line: #3c3c3c;
+  --line-strong: #4a4a4a;
+  --text: #d4d4d4;
+  --muted: #969696;
+  --muted-strong: #a0a0a0;
+  --accent: #f26b3a;
+  --accent-strong: #ff7f50;
+  --green: #6a9955;
+  --blue: #4fc1ff;
+  --red: #f14c4c;
+  --yellow: #cca700;
+  --shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+
 * {
   box-sizing: border-box;
 }

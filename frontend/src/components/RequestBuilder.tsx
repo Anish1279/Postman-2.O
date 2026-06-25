@@ -1,14 +1,16 @@
 "use client";
 
-import { AlertTriangle, Save, Send } from "lucide-react";
-import { useMemo } from "react";
+import { AlertTriangle, Save, Send, Code2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { KeyValueTable } from "@/components/KeyValueTable";
 import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 import { bodyModes, httpMethods, useWorkspaceStore } from "@/lib/workspace-store";
 import { collectMissingVariables } from "@/lib/variable-resolver";
 import type { AuthConfig, BodyMode, BuilderTab, HttpMethod, RequestDraftSnapshot } from "@/lib/types";
+import { CodeSnippetDialog } from "@/components/CodeSnippetDialog";
 
-const builderTabs: BuilderTab[] = ["params", "authorization", "headers", "body"];
+const builderTabs: BuilderTab[] = ["params", "authorization", "headers", "body", "pre-request", "tests"];
 const bodyModeLabels: Record<BodyMode, string> = {
   none: "none",
   raw: "raw",
@@ -21,10 +23,12 @@ function formatTabLabel(tab: BuilderTab): string {
 }
 
 export function RequestBuilder() {
+  const { theme } = useTheme();
   const activeTabId = useWorkspaceStore((state) => state.activeTabId);
   const activeRequest = useWorkspaceStore((state) => state.openTabs.find((tab) => tab.id === state.activeTabId));
   const builderTab = useWorkspaceStore((state) => state.builderTab);
   const setBuilderTab = useWorkspaceStore((state) => state.setBuilderTab);
+  const [showCode, setShowCode] = useState(false);
   const updateActiveRequest = useWorkspaceStore((state) => state.updateActiveRequest);
   const updateActiveAuth = useWorkspaceStore((state) => state.updateActiveAuth);
   const updateKeyValue = useWorkspaceStore((state) => state.updateKeyValue);
@@ -86,12 +90,15 @@ export function RequestBuilder() {
         </div>
       ) : null}
 
-      <div className="builder-tabs">
+      <div className="builder-tabs" style={{ display: "flex", gap: "8px", borderBottom: "1px solid var(--line)" }}>
         {builderTabs.map((tab) => (
           <button key={tab} className={builderTab === tab ? "active" : ""} onClick={() => setBuilderTab(tab)}>
             {formatTabLabel(tab)}
           </button>
         ))}
+        <button className="icon-button" style={{ marginLeft: "auto" }} title="Code Snippets" onClick={() => setShowCode(true)}>
+          <Code2 size={15} />
+        </button>
       </div>
 
       <div className="builder-panel">
@@ -198,7 +205,7 @@ export function RequestBuilder() {
                 <Editor
                   height="100%"
                   defaultLanguage="json"
-                  theme="vs-light"
+                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
                   value={activeRequest.rawBody}
                   onChange={(value) => updateActiveRequest({ rawBody: value ?? "" })}
                   options={{
@@ -234,7 +241,44 @@ export function RequestBuilder() {
             ) : null}
           </div>
         ) : null}
+        {builderTab === "pre-request" ? (
+          <div style={{ height: "300px", border: "1px solid var(--border-color)", borderRadius: "4px", overflow: "hidden" }}>
+            <Editor
+              height="100%"
+              defaultLanguage="javascript"
+              theme={theme === "dark" ? "vs-dark" : "vs-light"}
+              value={activeRequest.preRequestScript}
+              onChange={(value) => updateActiveRequest({ preRequestScript: value ?? "" })}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                wordWrap: "on",
+                padding: { top: 8, bottom: 8 }
+              }}
+            />
+          </div>
+        ) : null}
+
+        {builderTab === "tests" ? (
+          <div style={{ height: "300px", border: "1px solid var(--border-color)", borderRadius: "4px", overflow: "hidden" }}>
+            <Editor
+              height="100%"
+              defaultLanguage="javascript"
+              theme={theme === "dark" ? "vs-dark" : "vs-light"}
+              value={activeRequest.testScript}
+              onChange={(value) => updateActiveRequest({ testScript: value ?? "" })}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                wordWrap: "on",
+                padding: { top: 8, bottom: 8 }
+              }}
+            />
+          </div>
+        ) : null}
       </div>
+
+      {showCode ? <CodeSnippetDialog onClose={() => setShowCode(false)} /> : null}
     </section>
   );
 }

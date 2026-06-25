@@ -9,7 +9,7 @@ export type AuthConfig =
 
 export type SidebarMode = "collections" | "history";
 
-export type BuilderTab = "params" | "authorization" | "headers" | "body";
+export type BuilderTab = "params" | "authorization" | "headers" | "body" | "pre-request" | "tests";
 
 export type ResponseView = "pretty" | "raw" | "headers";
 
@@ -47,6 +47,8 @@ export interface RequestDraftSnapshot {
   formData: KeyValuePair[];
   urlEncodedBody: KeyValuePair[];
   auth: AuthConfig;
+  preRequestScript: string;
+  testScript: string;
 }
 
 export interface RequestDraft extends RequestDraftSnapshot {

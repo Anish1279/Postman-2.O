@@ -37,6 +37,7 @@ class CreateRequestPayload(BaseModel):
     bodyMode: str = "none"
     body: dict = Field(default_factory=dict)
     auth: dict = Field(default_factory=lambda: {"type": "none"})
+    scripts: dict = Field(default_factory=lambda: {"preRequest": "", "test": ""})
 
 
 class RenamePayload(BaseModel):
@@ -52,6 +53,7 @@ class UpdateRequestPayload(BaseModel):
     bodyMode: str | None = None
     body: dict | None = None
     auth: dict | None = None
+    scripts: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +115,7 @@ def _build_tree(conn, workspace_id: int) -> list[dict[str, Any]]:
 
     request_rows = conn.execute(
         """
-        SELECT collection_id, id, method, url, query_params_json, headers_json, body_mode, body_json, auth_json
+        SELECT collection_id, id, method, url, query_params_json, headers_json, body_mode, body_json, auth_json, scripts_json
         FROM requests
         WHERE collection_id IN (SELECT id FROM collections WHERE workspace_id = ?)
         """,
@@ -145,6 +147,7 @@ def _build_tree(conn, workspace_id: int) -> list[dict[str, Any]]:
                 "bodyMode": request["body_mode"],
                 "body": _decode_json(request["body_json"], {}),
                 "auth": _decode_json(request["auth_json"], {"type": "none"}),
+                "scripts": _decode_json(request["scripts_json"], {"preRequest": "", "test": ""}),
             }
 
         nodes[row["id"]] = node
@@ -238,8 +241,8 @@ def create_request(payload: CreateRequestPayload) -> dict[str, Any]:
         # Create the request row
         cursor = conn.execute(
             """
-            INSERT INTO requests (collection_id, method, url, query_params_json, headers_json, body_mode, body_json, auth_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO requests (collection_id, method, url, query_params_json, headers_json, body_mode, body_json, auth_json, scripts_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 collection_id,
@@ -250,6 +253,7 @@ def create_request(payload: CreateRequestPayload) -> dict[str, Any]:
                 payload.bodyMode,
                 _json(payload.body),
                 _json(payload.auth),
+                _json(payload.scripts),
             ),
         )
         request_id = cursor.lastrowid
@@ -319,14 +323,15 @@ def update_request(collection_id: int, payload: UpdateRequestPayload) -> dict[st
         body_mode = payload.bodyMode if payload.bodyMode is not None else request_row["body_mode"]
         body = _json(payload.body) if payload.body is not None else request_row["body_json"]
         auth = _json(payload.auth) if payload.auth is not None else request_row["auth_json"]
+        scripts = _json(payload.scripts) if payload.scripts is not None else request_row.get("scripts_json", "{}")
 
         conn.execute(
             """
             UPDATE requests
-            SET method = ?, url = ?, query_params_json = ?, headers_json = ?, body_mode = ?, body_json = ?, auth_json = ?, updated_at = CURRENT_TIMESTAMP
+            SET method = ?, url = ?, query_params_json = ?, headers_json = ?, body_mode = ?, body_json = ?, auth_json = ?, scripts_json = ?, updated_at = CURRENT_TIMESTAMP
             WHERE collection_id = ?
             """,
-            (method, url, query_params, headers, body_mode, body, auth, collection_id),
+            (method, url, query_params, headers, body_mode, body, auth, scripts, collection_id),
         )
 
         # Also rename the collection node if a new name was provided

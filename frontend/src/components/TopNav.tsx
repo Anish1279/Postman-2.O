@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, ChevronDown, Cloud, Settings, Sliders, Users } from "lucide-react";
-import { useState } from "react";
+import { Bell, ChevronDown, Cloud, Settings, Sliders, Users, Moon, Sun } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import { EnvironmentEditor } from "@/components/EnvironmentEditor";
 import { ComingSoonDialog } from "@/components/ComingSoonDialog";
+import { useTheme } from "next-themes";
 
 export function TopNav() {
   const environments = useWorkspaceStore((state) => state.environments);
@@ -12,6 +13,12 @@ export function TopNav() {
   const setActiveEnvironment = useWorkspaceStore((state) => state.setActiveEnvironment);
   const [showEnvEditor, setShowEnvEditor] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <>
@@ -55,6 +62,15 @@ export function TopNav() {
           <button className="icon-button" title="Notifications" onClick={() => setComingSoonTitle("Notifications")}>
             <Bell size={17} />
           </button>
+          {mounted && (
+            <button
+              className="icon-button"
+              title="Toggle Theme"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+          )}
           <button className="icon-button" title="Settings" onClick={() => setComingSoonTitle("Global Settings")}>
             <Settings size={17} />
           </button>

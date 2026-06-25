@@ -58,6 +58,7 @@ export interface RequestApiData {
   bodyMode: string;
   body: Record<string, unknown>;
   auth: Record<string, unknown>;
+  scripts?: { preRequest?: string; test?: string; };
 }
 
 export interface EnvironmentApiNode {
@@ -128,6 +129,7 @@ export function updateSavedRequest(
     bodyMode?: string;
     body?: Record<string, unknown>;
     auth?: Record<string, unknown>;
+    scripts?: { preRequest?: string; test?: string; };
   }
 ): Promise<{ status: string; request: RequestApiData }> {
   return apiFetch<{ status: string; request: RequestApiData }>(`/api/collections/${collectionId}/request`, {
@@ -212,3 +214,17 @@ export function createHistoryEntry(payload: {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Import / Export
+// ---------------------------------------------------------------------------
+
+export function exportWorkspace(): Promise<any> {
+  return apiFetch<any>("/api/export");
+}
+
+export function importWorkspace(data: any): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>("/api/import", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}

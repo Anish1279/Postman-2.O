@@ -32,8 +32,9 @@ import {
   createHistoryEntry
 } from "@/lib/api";
 import type { CollectionApiNode } from "@/lib/api";
-import { buildVariableMap, resolveSnapshot } from "@/lib/variable-resolver";
-import { toast } from "@/lib/toast";
+import { buildVariableMap, resolveSnapshot } from "./variable-resolver";
+import { runScript } from "./sandbox";
+import { toast } from "./toast";
 
 type KeyValueKind = "queryParams" | "headers" | "formData" | "urlEncodedBody";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -113,7 +114,9 @@ function cloneSnapshot(snapshot: RequestDraftSnapshot): RequestDraftSnapshot {
     headers: cloneRows(snapshot.headers),
     formData: cloneRows(snapshot.formData),
     urlEncodedBody: cloneRows(snapshot.urlEncodedBody),
-    auth: { ...snapshot.auth }
+    auth: { ...snapshot.auth },
+    preRequestScript: snapshot.preRequestScript,
+    testScript: snapshot.testScript
   };
 }
 
@@ -128,7 +131,9 @@ function makeSnapshot(tab: RequestDraft): RequestDraftSnapshot {
     rawBody: tab.rawBody,
     formData: cloneRows(tab.formData),
     urlEncodedBody: cloneRows(tab.urlEncodedBody),
-    auth: { ...tab.auth }
+    auth: { ...tab.auth },
+    preRequestScript: tab.preRequestScript,
+    testScript: tab.testScript
   };
 }
 
@@ -354,6 +359,8 @@ function apiNodeToDraft(node: CollectionApiNode): RequestDraft {
     formData: [],
     urlEncodedBody: [],
     auth,
+    preRequestScript: req?.scripts?.preRequest ?? "",
+    testScript: req?.scripts?.test ?? "",
     savedSnapshot: null,
     isSending: false,
     isDirty: false,
@@ -412,6 +419,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       formData: [],
       urlEncodedBody: [],
       auth: { type: "none" },
+      preRequestScript: "",
+      testScript: "",
+      response: undefined,
       savedSnapshot: null,
       isSending: false,
       isDirty: true
@@ -523,6 +533,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           formData: [],
           urlEncodedBody: [],
           auth: { type: "none" },
+          preRequestScript: "",
+          testScript: "",
           savedSnapshot: null,
           isSending: false,
           isDirty: true
@@ -554,6 +566,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         formData: [],
         urlEncodedBody: [],
         auth: { type: "none" },
+        preRequestScript: "",
+        testScript: "",
         savedSnapshot: null,
         isSending: false,
         isDirty: true
@@ -588,7 +602,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     // Resolve {{variables}} using the active environment
     const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
-    const vars = activeEnv ? buildVariableMap(activeEnv.variables) : {};
+    let vars = activeEnv ? buildVariableMap(activeEnv.variables) : {};
+    
+    // Run pre-request script
+    if (tab.preRequestScript && tab.preRequestScript.trim() !== "") {
+      const { updatedVars } = runScript(tab.preRequestScript, vars);
+      vars = updatedVars;
+    }
+
     const rawPayload = makeRunnerPayload(tab);
     const resolvedPayload = resolveSnapshot(rawPayload, vars);
 
@@ -616,6 +637,31 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         `Could not reach the FastAPI runner at ${API_BASE_URL}. Start the backend and try again.`,
         Math.round(performance.now() - startedAt)
       );
+    }
+    
+    // Run test script
+    if (tab.testScript && tab.testScript.trim() !== "") {
+      const { updatedVars } = runScript(tab.testScript, vars, snapshot);
+      vars = updatedVars;
+    }
+
+    // Sync variables back to environment if active
+    if (activeEnvironmentId) {
+      // Reconstruct variable array mapping
+      const updatedEnvVars = (activeEnv?.variables || []).map(v => ({
+        ...v,
+        value: vars[v.key] ?? v.value
+      }));
+      // Also add newly created variables that weren't in the env before
+      const existingKeys = new Set(updatedEnvVars.map(v => v.key));
+      for (const [key, value] of Object.entries(vars)) {
+        if (!existingKeys.has(key)) {
+          updatedEnvVars.push({ id: crypto.randomUUID(), key, value, enabled: true });
+        }
+      }
+      
+      // Save it using the store's action without blocking
+      get().updateEnvironmentVariables(Number(activeEnvironmentId), updatedEnvVars).catch(console.error);
     }
 
     set((state) => ({
@@ -748,6 +794,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             bodyMode: tab.bodyMode,
             body: tab.bodyMode === "raw" ? { raw: tab.rawBody } : {},
             auth: authPayload,
+            scripts: { preRequest: tab.preRequestScript, test: tab.testScript },
           });
         }
 
@@ -787,6 +834,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         bodyMode: tab.bodyMode,
         body: tab.bodyMode === "raw" ? { raw: tab.rawBody } : {},
         auth: authPayload,
+        scripts: { preRequest: tab.preRequestScript, test: tab.testScript },
       });
 
       const snapshot = makeSnapshot(tab);
@@ -880,6 +928,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             formData: [],
             urlEncodedBody: [],
             auth: { type: "none" },
+            preRequestScript: "",
+            testScript: "",
             savedSnapshot: null,
             isSending: false,
             isDirty: true

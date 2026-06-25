@@ -3,6 +3,7 @@
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { ResponseView } from "@/lib/types";
 import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 
 const responseViews: ResponseView[] = ["pretty", "raw", "headers"];
 
@@ -15,6 +16,7 @@ function prettyBody(body: string): string {
 }
 
 export function ResponsePanel() {
+  const { theme } = useTheme();
   const activeRequest = useWorkspaceStore((state) => state.openTabs.find((tab) => tab.id === state.activeTabId));
   const responseView = useWorkspaceStore((state) => state.responseView);
   const setResponseView = useWorkspaceStore((state) => state.setResponseView);
@@ -73,7 +75,7 @@ export function ResponsePanel() {
             <Editor
               height="100%"
               defaultLanguage="json"
-              theme="vs-light"
+              theme={theme === "dark" ? "vs-dark" : "vs-light"}
               value={visibleBody}
               options={{
                 readOnly: true,
