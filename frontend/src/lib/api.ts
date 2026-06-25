@@ -197,3 +197,18 @@ export function deleteVariable(envId: number, varId: number): Promise<{ status: 
   });
 }
 
+// ---------------------------------------------------------------------------
+// History
+// ---------------------------------------------------------------------------
+
+export function createHistoryEntry(payload: {
+  workspace_id?: number;
+  request_snapshot: Record<string, unknown>;
+  response_metadata: Record<string, unknown>;
+}): Promise<HistoryApiNode> {
+  return apiFetch<HistoryApiNode>("/api/history", {
+    method: "POST",
+    body: JSON.stringify({ workspace_id: 1, ...payload }),
+  });
+}
+

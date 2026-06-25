@@ -28,7 +28,8 @@ import {
   createEnvironment as apiCreateEnvironment,
   renameEnvironment as apiRenameEnvironment,
   deleteEnvironment as apiDeleteEnvironment,
-  bulkUpdateVariables as apiBulkUpdateVariables
+  bulkUpdateVariables as apiBulkUpdateVariables,
+  createHistoryEntry
 } from "@/lib/api";
 import type { CollectionApiNode } from "@/lib/api";
 import { buildVariableMap, resolveSnapshot } from "@/lib/variable-resolver";
@@ -69,6 +70,7 @@ interface WorkspaceState {
   bootstrap: () => Promise<void>;
   sendActiveRequest: () => Promise<void>;
   openRequest: (collectionNodeId: number) => void;
+  openHistoryEntry: (historyId: string) => void;
 
   // Actions – Collections CRUD
   saveActiveRequest: () => Promise<void>;
@@ -301,6 +303,17 @@ function toCollectionNodes(apiNodes: CollectionApiNode[]): CollectionNode[] {
 // Convert a backend request node to a RequestDraft for opening in a tab
 // ---------------------------------------------------------------------------
 
+function snapshotToDraft(snapshot: RequestDraftSnapshot, idSuffix: string = makeId("draft")): RequestDraft {
+  return {
+    ...snapshot,
+    id: `tab-${idSuffix}`,
+    collectionNodeId: undefined,
+    savedSnapshot: null,
+    isSending: false,
+    isDirty: true
+  };
+}
+
 function apiNodeToDraft(node: CollectionApiNode): RequestDraft {
   const req = node.request;
   const queryParams: KeyValuePair[] = (req?.queryParams ?? []).map((row, i) => ({
@@ -485,7 +498,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           url: String(req.url ?? ""),
           status: Number(res.status ?? 0),
           timeMs: Number(res.timeMs ?? 0),
-          requestedAt: h.executedAt
+          requestedAt: h.executedAt,
+          requestSnapshot: req as unknown as RequestDraftSnapshot,
+          responseSnapshot: res as unknown as ResponseSnapshot
         };
       });
 
@@ -576,6 +591,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const rawPayload = makeRunnerPayload(tab);
     const resolvedPayload = resolveSnapshot(rawPayload, vars);
 
+    let snapshot: ResponseSnapshot;
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/runner/send`, {
         method: "POST",
@@ -585,7 +602,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         body: JSON.stringify(resolvedPayload)
       });
 
-      let snapshot: ResponseSnapshot;
       if (response.ok) {
         snapshot = (await response.json()) as ResponseSnapshot;
       } else {
@@ -594,29 +610,42 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           Math.round(performance.now() - startedAt)
         );
       }
-
-      set((state) => ({
-        openTabs: updateActiveTab(state.openTabs, activeTabId, (item) => ({
-          ...item,
-          response: snapshot,
-          isSending: false
-        })),
-        responseView: "pretty"
-      }));
     } catch {
-      const snapshot = makeClientErrorResponse(
+      snapshot = makeClientErrorResponse(
         `Could not reach the FastAPI runner at ${API_BASE_URL}. Start the backend and try again.`,
         Math.round(performance.now() - startedAt)
       );
+    }
 
-      set((state) => ({
-        openTabs: updateActiveTab(state.openTabs, activeTabId, (item) => ({
-          ...item,
-          response: snapshot,
-          isSending: false
-        })),
-        responseView: "pretty"
-      }));
+    set((state) => ({
+      openTabs: updateActiveTab(state.openTabs, activeTabId, (item) => ({
+        ...item,
+        response: snapshot,
+        isSending: false
+      })),
+      responseView: "pretty"
+    }));
+
+    // Post to history
+    try {
+      const historyApiNode = await createHistoryEntry({
+        request_snapshot: rawPayload as unknown as Record<string, unknown>,
+        response_metadata: snapshot as unknown as Record<string, unknown>
+      });
+      const newEntry: HistoryEntry = {
+        id: String(historyApiNode.id),
+        name: rawPayload.name || "Untitled",
+        method: rawPayload.method,
+        url: rawPayload.url,
+        status: snapshot.status,
+        timeMs: snapshot.timeMs,
+        requestedAt: historyApiNode.executedAt,
+        requestSnapshot: rawPayload,
+        responseSnapshot: snapshot
+      };
+      set((state) => ({ history: [newEntry, ...state.history] }));
+    } catch (err) {
+      console.error("Failed to log history:", err);
     }
   },
 
@@ -654,6 +683,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId: draft.id
       }));
     }).catch(console.error);
+  },
+
+  openHistoryEntry: (historyId: string) => {
+    const state = get();
+    const historyItem = state.history.find((h) => h.id === historyId);
+    if (!historyItem) return;
+
+    // A history entry acts just like a request draft
+    const draft = snapshotToDraft(historyItem.requestSnapshot);
+    // Overwrite the name to show it's from history if not already labeled
+    draft.name = historyItem.name || "History Request";
+    // Also inject the response so we can review the exact state
+    if (historyItem.responseSnapshot) {
+      draft.response = historyItem.responseSnapshot;
+    }
+
+    set((s) => ({
+      openTabs: [...s.openTabs, draft],
+      activeTabId: draft.id
+    }));
   },
 
   // ------------------------------------------------------------------

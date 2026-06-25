@@ -292,6 +292,7 @@ export function Sidebar() {
   const createFolder = useWorkspaceStore((state) => state.createFolder);
   const createRequestInCollection = useWorkspaceStore((state) => state.createRequestInCollection);
   const deleteCollectionNode = useWorkspaceStore((state) => state.deleteCollectionNode);
+  const openHistoryEntry = useWorkspaceStore((state) => state.openHistoryEntry);
 
   const filteredHistory = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -387,7 +388,7 @@ export function Sidebar() {
         ) : (
           <div className="history-list">
             {filteredHistory.map((item) => (
-              <button className="history-row" key={item.id}>
+              <button className="history-row" key={item.id} onClick={() => openHistoryEntry(item.id)}>
                 <div className="method-badge compact-method">{item.method}</div>
                 <div>
                   <strong>{item.name}</strong>

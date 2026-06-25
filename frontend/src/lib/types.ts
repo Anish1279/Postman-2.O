@@ -83,6 +83,8 @@ export interface HistoryEntry {
   status: number;
   timeMs: number;
   requestedAt: string;
+  requestSnapshot: RequestDraftSnapshot;
+  responseSnapshot: ResponseSnapshot;
 }
 
 export interface WorkspaceLayout {
