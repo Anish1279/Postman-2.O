@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import init_database
-from .routers import bootstrap, collections, health, runner
+from .routers import bootstrap, collections, environments, health, runner
 from .seed import seed_database
 
 
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(bootstrap.router)
 app.include_router(collections.router)
+app.include_router(environments.router)
 app.include_router(runner.router)
 
 

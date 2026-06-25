@@ -23,9 +23,15 @@ import {
   createRequest as apiCreateRequest,
   renameCollection as apiRenameCollection,
   updateSavedRequest as apiUpdateSavedRequest,
-  deleteCollection as apiDeleteCollection
+  deleteCollection as apiDeleteCollection,
+  fetchEnvironments,
+  createEnvironment as apiCreateEnvironment,
+  renameEnvironment as apiRenameEnvironment,
+  deleteEnvironment as apiDeleteEnvironment,
+  bulkUpdateVariables as apiBulkUpdateVariables
 } from "@/lib/api";
 import type { CollectionApiNode } from "@/lib/api";
+import { buildVariableMap, resolveSnapshot } from "@/lib/variable-resolver";
 
 type KeyValueKind = "queryParams" | "headers" | "formData" | "urlEncodedBody";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -71,6 +77,14 @@ interface WorkspaceState {
   renameCollectionNode: (collectionNodeId: number, name: string) => Promise<void>;
   deleteCollectionNode: (collectionNodeId: number) => Promise<void>;
   refreshCollections: () => Promise<void>;
+
+  // Actions – Environments CRUD
+  createEnvironment: (name: string) => Promise<void>;
+  renameEnvironment: (envId: number, name: string) => Promise<void>;
+  deleteEnvironment: (envId: number) => Promise<void>;
+  updateEnvironmentVariables: (envId: number, variables: KeyValuePair[]) => Promise<void>;
+  refreshEnvironments: () => Promise<void>;
+  getActiveVariableMap: () => Record<string, string>;
 }
 
 function makeId(prefix: string): string {
@@ -541,7 +555,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   // ------------------------------------------------------------------
 
   sendActiveRequest: async () => {
-    const { activeTabId, openTabs } = get();
+    const { activeTabId, openTabs, activeEnvironmentId, environments } = get();
     const tab = openTabs.find((item) => item.id === activeTabId);
     if (!tab || tab.isSending) {
       return;
@@ -556,13 +570,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }))
     }));
 
+    // Resolve {{variables}} using the active environment
+    const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
+    const vars = activeEnv ? buildVariableMap(activeEnv.variables) : {};
+    const rawPayload = makeRunnerPayload(tab);
+    const resolvedPayload = resolveSnapshot(rawPayload, vars);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/runner/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(makeRunnerPayload(tab))
+        body: JSON.stringify(resolvedPayload)
       });
 
       let snapshot: ResponseSnapshot;
@@ -832,6 +852,81 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (error) {
       console.error("Failed to refresh collections:", error);
     }
+  },
+
+  // ------------------------------------------------------------------
+  // Environments CRUD
+  // ------------------------------------------------------------------
+
+  createEnvironment: async (name) => {
+    try {
+      const result = await apiCreateEnvironment({ name });
+      await get().refreshEnvironments();
+    } catch (error) {
+      console.error("Failed to create environment:", error);
+    }
+  },
+
+  renameEnvironment: async (envId, name) => {
+    try {
+      await apiRenameEnvironment(envId, name);
+      await get().refreshEnvironments();
+    } catch (error) {
+      console.error("Failed to rename environment:", error);
+    }
+  },
+
+  deleteEnvironment: async (envId) => {
+    try {
+      await apiDeleteEnvironment(envId);
+      const { activeEnvironmentId, environments } = get();
+      await get().refreshEnvironments();
+
+      // If the deleted env was active, pick the first remaining
+      if (String(envId) === activeEnvironmentId) {
+        const nextEnvs = get().environments;
+        set({ activeEnvironmentId: nextEnvs.length > 0 ? nextEnvs[0].id : "" });
+      }
+    } catch (error) {
+      console.error("Failed to delete environment:", error);
+    }
+  },
+
+  updateEnvironmentVariables: async (envId, variables) => {
+    try {
+      await apiBulkUpdateVariables(
+        envId,
+        variables.map((v) => ({ key: v.key, value: v.value, is_enabled: v.enabled }))
+      );
+      await get().refreshEnvironments();
+    } catch (error) {
+      console.error("Failed to update variables:", error);
+    }
+  },
+
+  refreshEnvironments: async () => {
+    try {
+      const apiEnvs = await fetchEnvironments();
+      const environments: Environment[] = apiEnvs.map((env) => ({
+        id: String(env.id),
+        name: env.name,
+        variables: env.variables.map((v) => ({
+          id: String(v.id),
+          key: v.key,
+          value: v.value,
+          enabled: v.enabled,
+        })),
+      }));
+      set({ environments });
+    } catch (error) {
+      console.error("Failed to refresh environments:", error);
+    }
+  },
+
+  getActiveVariableMap: () => {
+    const { activeEnvironmentId, environments } = get();
+    const env = environments.find((e) => e.id === activeEnvironmentId);
+    return env ? buildVariableMap(env.variables) : {};
   },
 }));
 

@@ -1,9 +1,11 @@
 "use client";
 
-import { Save, Send } from "lucide-react";
+import { AlertTriangle, Save, Send } from "lucide-react";
+import { useMemo } from "react";
 import { KeyValueTable } from "@/components/KeyValueTable";
 import { bodyModes, httpMethods, useWorkspaceStore } from "@/lib/workspace-store";
-import type { AuthConfig, BodyMode, BuilderTab, HttpMethod } from "@/lib/types";
+import { collectMissingVariables } from "@/lib/variable-resolver";
+import type { AuthConfig, BodyMode, BuilderTab, HttpMethod, RequestDraftSnapshot } from "@/lib/types";
 
 const builderTabs: BuilderTab[] = ["params", "authorization", "headers", "body"];
 const bodyModeLabels: Record<BodyMode, string> = {
@@ -29,6 +31,13 @@ export function RequestBuilder() {
   const removeKeyValue = useWorkspaceStore((state) => state.removeKeyValue);
   const saveActiveRequest = useWorkspaceStore((state) => state.saveActiveRequest);
   const sendActiveRequest = useWorkspaceStore((state) => state.sendActiveRequest);
+  const getActiveVariableMap = useWorkspaceStore((state) => state.getActiveVariableMap);
+
+  const missingVars = useMemo(() => {
+    if (!activeRequest) return [];
+    const vars = getActiveVariableMap();
+    return collectMissingVariables(activeRequest, vars);
+  }, [activeRequest, getActiveVariableMap]);
 
   if (!activeRequest) {
     return null;
@@ -66,6 +75,15 @@ export function RequestBuilder() {
           {activeRequest.isSending ? "Sending" : "Send"}
         </button>
       </div>
+
+      {missingVars.length > 0 ? (
+        <div className="missing-vars-banner">
+          <AlertTriangle size={14} />
+          <span>
+            Unresolved variables: {missingVars.map((v) => <code key={v}>{`{{${v}}}`}</code>)}
+          </span>
+        </div>
+      ) : null}
 
       <div className="builder-tabs">
         {builderTabs.map((tab) => (

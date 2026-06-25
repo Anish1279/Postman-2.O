@@ -141,3 +141,59 @@ export function deleteCollection(collectionId: number): Promise<{ status: string
     method: "DELETE",
   });
 }
+
+// ---------------------------------------------------------------------------
+// Environments
+// ---------------------------------------------------------------------------
+
+export function fetchEnvironments(workspaceId = 1): Promise<EnvironmentApiNode[]> {
+  return apiFetch<EnvironmentApiNode[]>(`/api/environments?workspace_id=${workspaceId}`);
+}
+
+export function createEnvironment(payload: {
+  workspace_id?: number;
+  name: string;
+  is_active?: boolean;
+}): Promise<EnvironmentApiNode> {
+  return apiFetch<EnvironmentApiNode>("/api/environments", {
+    method: "POST",
+    body: JSON.stringify({ workspace_id: 1, ...payload }),
+  });
+}
+
+export function renameEnvironment(envId: number, name: string): Promise<{ status: string; name: string }> {
+  return apiFetch<{ status: string; name: string }>(`/api/environments/${envId}`, {
+    method: "PUT",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function activateEnvironment(envId: number, workspaceId = 1): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/environments/${envId}/activate`, {
+    method: "PUT",
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+}
+
+export function deleteEnvironment(envId: number): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/environments/${envId}`, {
+    method: "DELETE",
+  });
+}
+
+export function bulkUpdateVariables(
+  envId: number,
+  variables: { key: string; value: string; is_enabled: boolean }[]
+): Promise<EnvironmentApiNode> {
+  return apiFetch<EnvironmentApiNode>(`/api/environments/${envId}/variables`, {
+    method: "PUT",
+    body: JSON.stringify({ variables }),
+  });
+}
+
+export function deleteVariable(envId: number, varId: number): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/environments/${envId}/variables/${varId}`, {
+    method: "DELETE",
+  });
+}
+
