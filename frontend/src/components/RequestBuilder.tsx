@@ -3,6 +3,7 @@
 import { AlertTriangle, Save, Send } from "lucide-react";
 import { useMemo } from "react";
 import { KeyValueTable } from "@/components/KeyValueTable";
+import Editor from "@monaco-editor/react";
 import { bodyModes, httpMethods, useWorkspaceStore } from "@/lib/workspace-store";
 import { collectMissingVariables } from "@/lib/variable-resolver";
 import type { AuthConfig, BodyMode, BuilderTab, HttpMethod, RequestDraftSnapshot } from "@/lib/types";
@@ -193,11 +194,21 @@ export function RequestBuilder() {
             {activeRequest.bodyMode === "none" ? <div className="empty-body-state">No body</div> : null}
 
             {activeRequest.bodyMode === "raw" ? (
-              <textarea
-                value={activeRequest.rawBody}
-                onChange={(event) => updateActiveRequest({ rawBody: event.target.value })}
-                placeholder="{ }"
-              />
+              <div style={{ height: "300px", border: "1px solid var(--border-color)", borderRadius: "4px", overflow: "hidden" }}>
+                <Editor
+                  height="100%"
+                  defaultLanguage="json"
+                  theme="vs-light"
+                  value={activeRequest.rawBody}
+                  onChange={(value) => updateActiveRequest({ rawBody: value ?? "" })}
+                  options={{
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    wordWrap: "on",
+                    padding: { top: 8, bottom: 8 }
+                  }}
+                />
+              </div>
             ) : null}
 
             {activeRequest.bodyMode === "form-data" ? (

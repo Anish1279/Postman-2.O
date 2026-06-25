@@ -33,6 +33,7 @@ import {
 } from "@/lib/api";
 import type { CollectionApiNode } from "@/lib/api";
 import { buildVariableMap, resolveSnapshot } from "@/lib/variable-resolver";
+import { toast } from "@/lib/toast";
 
 type KeyValueKind = "queryParams" | "headers" | "formData" | "urlEncodedBody";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -750,18 +751,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           });
         }
 
-        // Update the tab with the new collectionNodeId and refresh collections
+        const snapshot = makeSnapshot(tab);
         set((state) => ({
           openTabs: updateActiveTab(state.openTabs, activeTabId, (t) => ({
             ...t,
             collectionNodeId: result.id,
-            savedSnapshot: makeSnapshot(t),
+            savedSnapshot: snapshot,
             isDirty: false,
           }))
         }));
         await get().refreshCollections();
+        toast.success("Request created in root collection");
       } catch (error) {
         console.error("Failed to save new request:", error);
+        toast.error("Failed to save request");
       }
       return;
     }
@@ -786,16 +789,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         auth: authPayload,
       });
 
+      const snapshot = makeSnapshot(tab);
       set((state) => ({
         openTabs: updateActiveTab(state.openTabs, activeTabId, (t) => ({
           ...t,
-          savedSnapshot: makeSnapshot(t),
+          savedSnapshot: snapshot,
           isDirty: false,
         }))
       }));
       await get().refreshCollections();
+      toast.success("Request saved successfully");
     } catch (error) {
       console.error("Failed to update request:", error);
+      toast.error("Failed to save request");
     }
   },
 
@@ -909,10 +915,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   createEnvironment: async (name) => {
     try {
-      const result = await apiCreateEnvironment({ name });
+      await apiCreateEnvironment({ name });
       await get().refreshEnvironments();
+      toast.success("Environment created");
     } catch (error) {
       console.error("Failed to create environment:", error);
+      toast.error("Failed to create environment");
     }
   },
 
@@ -920,15 +928,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       await apiRenameEnvironment(envId, name);
       await get().refreshEnvironments();
+      toast.success("Environment renamed");
     } catch (error) {
       console.error("Failed to rename environment:", error);
+      toast.error("Failed to rename environment");
     }
   },
 
   deleteEnvironment: async (envId) => {
     try {
       await apiDeleteEnvironment(envId);
-      const { activeEnvironmentId, environments } = get();
+      const { activeEnvironmentId } = get();
       await get().refreshEnvironments();
 
       // If the deleted env was active, pick the first remaining
@@ -936,8 +946,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const nextEnvs = get().environments;
         set({ activeEnvironmentId: nextEnvs.length > 0 ? nextEnvs[0].id : "" });
       }
+      toast.info("Environment deleted");
     } catch (error) {
       console.error("Failed to delete environment:", error);
+      toast.error("Failed to delete environment");
     }
   },
 
@@ -948,8 +960,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         variables.map((v) => ({ key: v.key, value: v.value, is_enabled: v.enabled }))
       );
       await get().refreshEnvironments();
+      toast.success("Variables saved");
     } catch (error) {
       console.error("Failed to update variables:", error);
+      toast.error("Failed to save variables");
     }
   },
 

@@ -4,6 +4,7 @@ import { Clock3, Edit2, FileText, Folder, FolderPlus, FilePlus, History, MoreHor
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { CollectionNode } from "@/lib/types";
+import { ComingSoonDialog } from "@/components/ComingSoonDialog";
 
 // ---------------------------------------------------------------------------
 // Inline rename input
@@ -285,6 +286,7 @@ export function Sidebar() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const activeSidebar = useWorkspaceStore((state) => state.activeSidebar);
   const setActiveSidebar = useWorkspaceStore((state) => state.setActiveSidebar);
   const collections = useWorkspaceStore((state) => state.collections);
@@ -402,11 +404,11 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar-footer">
-        <button>
+        <button onClick={() => setComingSoonTitle("Monitors")}>
           <Clock3 size={15} />
           Monitors
         </button>
-        <button>
+        <button onClick={() => setComingSoonTitle("Settings")}>
           <Settings size={15} />
           Settings
         </button>
@@ -432,6 +434,8 @@ export function Sidebar() {
           onCreateRequest={(name) => createRequestInCollection(null, name)}
         />
       ) : null}
+
+      {comingSoonTitle ? <ComingSoonDialog title={comingSoonTitle} onClose={() => setComingSoonTitle(null)} /> : null}
     </aside>
   );
 }

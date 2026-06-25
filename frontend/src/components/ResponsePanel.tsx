@@ -2,6 +2,7 @@
 
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { ResponseView } from "@/lib/types";
+import Editor from "@monaco-editor/react";
 
 const responseViews: ResponseView[] = ["pretty", "raw", "headers"];
 
@@ -66,7 +67,23 @@ export function ResponsePanel() {
             <div className="empty-response">No headers</div>
           )
         ) : (
-          <pre className={hasError ? "request-error" : ""}>{visibleBody}</pre>
+          hasError || responseView === "raw" ? (
+            <pre className={hasError ? "request-error" : ""}>{visibleBody}</pre>
+          ) : (
+            <Editor
+              height="100%"
+              defaultLanguage="json"
+              theme="vs-light"
+              value={visibleBody}
+              options={{
+                readOnly: true,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                wordWrap: "on",
+                padding: { top: 16, bottom: 16 }
+              }}
+            />
+          )
         )}
       </div>
     </section>

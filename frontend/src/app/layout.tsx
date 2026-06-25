@@ -6,10 +6,15 @@ export const metadata: Metadata = {
   description: "A staged Postman-style API client built with Next.js and FastAPI"
 };
 
+import { ToastProvider } from "@/components/ToastProvider";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ToastProvider />
+      </body>
     </html>
   );
 }
