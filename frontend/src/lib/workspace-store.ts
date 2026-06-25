@@ -14,7 +14,8 @@ import type {
   RequestDraftSnapshot,
   ResponseSnapshot,
   ResponseView,
-  SidebarMode
+  SidebarMode,
+  Cookie
 } from "@/lib/types";
 import {
   fetchBootstrap,
@@ -29,7 +30,10 @@ import {
   renameEnvironment as apiRenameEnvironment,
   deleteEnvironment as apiDeleteEnvironment,
   bulkUpdateVariables as apiBulkUpdateVariables,
-  createHistoryEntry
+  createHistoryEntry,
+  fetchCookies,
+  createCookie,
+  updateCookie
 } from "@/lib/api";
 import type { CollectionApiNode } from "@/lib/api";
 import { buildVariableMap, resolveSnapshot } from "./variable-resolver";
@@ -53,6 +57,7 @@ interface WorkspaceState {
   environments: Environment[];
   history: HistoryEntry[];
   openTabs: RequestDraft[];
+  cookies: Cookie[];
 
   // Actions – UI
   setActiveSidebar: (mode: SidebarMode) => void;
@@ -89,6 +94,9 @@ interface WorkspaceState {
   updateEnvironmentVariables: (envId: number, variables: KeyValuePair[]) => Promise<void>;
   refreshEnvironments: () => Promise<void>;
   getActiveVariableMap: () => Record<string, string>;
+
+  // Actions - Cookies
+  refreshCookies: () => Promise<void>;
 }
 
 function makeId(prefix: string): string {
@@ -387,6 +395,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   environments: [],
   history: [],
   openTabs: [],
+  cookies: [],
 
   setActiveSidebar: (mode) => set({ activeSidebar: mode }),
   setActiveTab: (tabId) => set({ activeTabId: tabId }),
@@ -621,11 +630,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(resolvedPayload)
+        body: JSON.stringify({ ...resolvedPayload, cookies: get().cookies })
       });
 
       if (response.ok) {
         snapshot = (await response.json()) as ResponseSnapshot;
+        
+        // Auto-ingest any set-cookies from the response
+        if (snapshot.setCookies && snapshot.setCookies.length > 0) {
+          const currentCookies = get().cookies;
+          for (const c of snapshot.setCookies) {
+            const existing = currentCookies.find(ex => ex.domain === c.domain && ex.name === c.name);
+            if (existing) {
+              await updateCookie(existing.id, c);
+            } else {
+              await createCookie(c);
+            }
+          }
+          await get().refreshCookies();
+        }
       } else {
         snapshot = makeClientErrorResponse(
           `The backend runner returned HTTP ${response.status} ${response.statusText}.`,
@@ -1033,6 +1056,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({ environments });
     } catch (error) {
       console.error("Failed to refresh environments:", error);
+    }
+  },
+
+  refreshCookies: async () => {
+    try {
+      const cookiesApi = await fetchCookies();
+      const cookies: Cookie[] = cookiesApi.map((c) => ({
+        id: String(c.id),
+        domain: c.domain,
+        name: c.name,
+        value: c.value,
+        path: c.path,
+        secure: Boolean(c.secure),
+        http_only: Boolean(c.http_only),
+      }));
+      set({ cookies });
+    } catch (error) {
+      console.error("Failed to refresh cookies:", error);
     }
   },
 

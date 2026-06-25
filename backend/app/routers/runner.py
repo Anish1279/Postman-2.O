@@ -33,6 +33,15 @@ class AuthPayload(BaseModel):
     password: str = ""
 
 
+class CookieItemPayload(BaseModel):
+    domain: str
+    name: str
+    value: str
+    path: str = "/"
+    secure: bool = False
+    http_only: bool = False
+
+
 class RunnerRequest(BaseModel):
     name: str = "Untitled Request"
     method: HttpMethod
@@ -44,6 +53,7 @@ class RunnerRequest(BaseModel):
     formData: list[KeyValuePayload] = Field(default_factory=list)
     urlEncodedBody: list[KeyValuePayload] = Field(default_factory=list)
     auth: AuthPayload = Field(default_factory=AuthPayload)
+    cookies: list[CookieItemPayload] = Field(default_factory=list)
 
 
 class RunnerInputError(ValueError):
@@ -174,11 +184,29 @@ async def send_request(payload: RunnerRequest) -> dict:
         return _error_response(exc.error_type, str(exc), _elapsed_ms(started_at))
 
     try:
+        # Load client cookies
+        httpx_cookies = httpx.Cookies()
+        for c in payload.cookies:
+            httpx_cookies.set(c.name, c.value, domain=c.domain, path=c.path)
+
         async with httpx.AsyncClient(
             follow_redirects=False,
             timeout=httpx.Timeout(settings.request_timeout_seconds),
+            cookies=httpx_cookies,
         ) as client:
             response = await client.request(payload.method, url, **_build_request_kwargs(payload))
+            
+            # Extract returned cookies
+            returned_cookies = []
+            for c in client.cookies.jar:
+                returned_cookies.append({
+                    "domain": c.domain,
+                    "name": c.name,
+                    "value": c.value,
+                    "path": c.path,
+                    "secure": c.secure,
+                    "http_only": c.has_nonstandard_attr('HttpOnly'),
+                })
     except httpx.TimeoutException:
         return _error_response(
             "timeout",
@@ -199,4 +227,5 @@ async def send_request(payload: RunnerRequest) -> dict:
         "sizeBytes": len(response.content),
         "headers": _response_headers(response),
         "body": body,
+        "setCookies": returned_cookies,
     }

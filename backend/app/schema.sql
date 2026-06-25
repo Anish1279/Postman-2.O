@@ -71,6 +71,19 @@ CREATE TABLE IF NOT EXISTS history (
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS cookies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    domain TEXT NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT NOT NULL,
+    path TEXT NOT NULL DEFAULT '/',
+    secure INTEGER NOT NULL DEFAULT 0,
+    http_only INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_history_workspace_executed
 ON history(workspace_id, executed_at DESC);
-

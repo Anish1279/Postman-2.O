@@ -228,3 +228,31 @@ export function importWorkspace(data: any): Promise<{ status: string }> {
     body: JSON.stringify(data),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Cookies
+// ---------------------------------------------------------------------------
+
+export function fetchCookies(workspaceId = 1): Promise<any[]> {
+  return apiFetch<any[]>(`/api/cookies?workspace_id=${workspaceId}`);
+}
+
+export function createCookie(payload: any): Promise<any> {
+  return apiFetch<any>("/api/cookies", {
+    method: "POST",
+    body: JSON.stringify({ workspace_id: 1, ...payload }),
+  });
+}
+
+export function updateCookie(cookieId: string, payload: any): Promise<any> {
+  return apiFetch<any>(`/api/cookies/${cookieId}`, {
+    method: "PUT",
+    body: JSON.stringify({ workspace_id: 1, ...payload }),
+  });
+}
+
+export function deleteCookie(cookieId: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/cookies/${cookieId}`, {
+    method: "DELETE",
+  });
+}

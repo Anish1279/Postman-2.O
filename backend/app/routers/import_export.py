@@ -37,6 +37,10 @@ def export_workspace(workspace_id: int = 1):
     """, (workspace_id,))
     variables = [dict(row) for row in cursor.fetchall()]
 
+    # Get Cookies
+    cursor.execute("SELECT * FROM cookies WHERE workspace_id = ?", (workspace_id,))
+    cookies = [dict(row) for row in cursor.fetchall()]
+
     conn.close()
 
     return {
@@ -44,7 +48,8 @@ def export_workspace(workspace_id: int = 1):
         "collections": collections,
         "requests": requests,
         "environments": environments,
-        "variables": variables
+        "variables": variables,
+        "cookies": cookies
     }
 
 @router.post("/import")
@@ -60,6 +65,7 @@ def import_workspace(data: dict, workspace_id: int = 1):
         # Wipe existing data for workspace
         cursor.execute("DELETE FROM collections WHERE workspace_id = ?", (workspace_id,))
         cursor.execute("DELETE FROM environments WHERE workspace_id = ?", (workspace_id,))
+        cursor.execute("DELETE FROM cookies WHERE workspace_id = ?", (workspace_id,))
         
         # We need a mapping from old IDs to new IDs
         collection_id_map = {}
@@ -139,6 +145,22 @@ def import_workspace(data: dict, workspace_id: int = 1):
                 var["is_enabled"],
                 var.get("created_at"),
                 var.get("updated_at")
+            ))
+
+        for cookie in data.get("cookies", []):
+            cursor.execute("""
+                INSERT INTO cookies (workspace_id, domain, name, value, path, secure, http_only, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                workspace_id,
+                cookie["domain"],
+                cookie["name"],
+                cookie["value"],
+                cookie.get("path", "/"),
+                cookie.get("secure", 0),
+                cookie.get("http_only", 0),
+                cookie.get("created_at"),
+                cookie.get("updated_at")
             ))
 
         conn.commit()

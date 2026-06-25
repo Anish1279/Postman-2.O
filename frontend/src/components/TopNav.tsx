@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, ChevronDown, Cloud, Settings, Sliders, Users, Moon, Sun } from "lucide-react";
+import { Bell, ChevronDown, Cloud, Settings, Sliders, Users, Moon, Sun, Cookie } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import { EnvironmentEditor } from "@/components/EnvironmentEditor";
 import { ComingSoonDialog } from "@/components/ComingSoonDialog";
+import { CookieManagerDialog } from "@/components/workspace/CookieManagerDialog";
 import { useTheme } from "next-themes";
 
 export function TopNav() {
@@ -12,6 +13,7 @@ export function TopNav() {
   const activeEnvironmentId = useWorkspaceStore((state) => state.activeEnvironmentId);
   const setActiveEnvironment = useWorkspaceStore((state) => state.setActiveEnvironment);
   const [showEnvEditor, setShowEnvEditor] = useState(false);
+  const [showCookieManager, setShowCookieManager] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -62,6 +64,9 @@ export function TopNav() {
           <button className="icon-button" title="Notifications" onClick={() => setComingSoonTitle("Notifications")}>
             <Bell size={17} />
           </button>
+          <button className="icon-button" title="Cookies" onClick={() => setShowCookieManager(true)}>
+            <Cookie size={17} />
+          </button>
           {mounted && (
             <button
               className="icon-button"
@@ -77,6 +82,7 @@ export function TopNav() {
         </div>
       </header>
       {showEnvEditor ? <EnvironmentEditor onClose={() => setShowEnvEditor(false)} /> : null}
+      <CookieManagerDialog open={showCookieManager} onOpenChange={setShowCookieManager} />
       {comingSoonTitle ? <ComingSoonDialog title={comingSoonTitle} onClose={() => setComingSoonTitle(null)} /> : null}
     </>
   );

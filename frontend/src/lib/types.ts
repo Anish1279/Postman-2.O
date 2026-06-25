@@ -33,7 +33,18 @@ export interface ResponseSnapshot {
   sizeBytes: number;
   headers: KeyValuePair[];
   body: string;
+  setCookies?: Cookie[];
   error?: ResponseError;
+}
+
+export interface Cookie {
+  id: string; // Will be stringified ID from backend or a local UUID if new
+  domain: string;
+  name: string;
+  value: string;
+  path: string;
+  secure: boolean;
+  http_only: boolean;
 }
 
 export interface RequestDraftSnapshot {
