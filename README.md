@@ -26,6 +26,9 @@
 
 ---
 
+<img width="1470" height="835" alt="Screenshot 2026-06-25 at 7 18 12 PM" src="https://github.com/user-attachments/assets/2700514d-c0c9-476c-9f96-ce030a539994" />
+
+
 ## Table of Contents
 
 - [Why Postman 2.0?](#-why-postman-20)
