@@ -1,19 +1,11 @@
 "use client";
 
-import { Bell, ChevronDown, Cloud, Settings, Sliders, Users, Moon, Sun, Cookie } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bell, ChevronDown, Home, Moon, Search, Settings, Sun, Users } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useWorkspaceStore } from "@/lib/workspace-store";
-import { EnvironmentEditor } from "@/components/EnvironmentEditor";
 import { ComingSoonDialog } from "@/components/ComingSoonDialog";
-import { CookieManagerDialog } from "@/components/workspace/CookieManagerDialog";
 import { useTheme } from "next-themes";
 
 export function TopNav() {
-  const environments = useWorkspaceStore((state) => state.environments);
-  const activeEnvironmentId = useWorkspaceStore((state) => state.activeEnvironmentId);
-  const setActiveEnvironment = useWorkspaceStore((state) => state.setActiveEnvironment);
-  const [showEnvEditor, setShowEnvEditor] = useState(false);
-  const [showCookieManager, setShowCookieManager] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -25,64 +17,61 @@ export function TopNav() {
   return (
     <>
       <header className="top-nav">
-        <div className="brand-lockup">
-          <div className="brand-mark">P</div>
-          <div>
-            <p className="eyebrow">Workspace</p>
-            <h1>Personal Workspace</h1>
-          </div>
+        <div className="top-nav-left">
+          <button className="icon-button compact" title="Back" onClick={() => setComingSoonTitle("Back")}>
+            <ArrowLeft size={16} />
+          </button>
+          <button className="icon-button compact" title="Forward" onClick={() => setComingSoonTitle("Forward")}>
+            <ArrowRight size={16} />
+          </button>
+          <button className="icon-button compact" title="Home" onClick={() => setComingSoonTitle("Home")}>
+            <Home size={17} />
+          </button>
+          <button className="icon-button compact" title="Workspace menu" onClick={() => setComingSoonTitle("Workspaces")}>
+            <ChevronDown size={14} />
+          </button>
+          <button className="workspace-switcher" onClick={() => setComingSoonTitle("Workspace Switcher")}>
+            <Users size={17} />
+            <span>Anish Singh&apos;s Workspace</span>
+            <ChevronDown size={14} />
+          </button>
         </div>
 
+        <label className="global-search">
+          <Search size={17} />
+          <input placeholder="Search" />
+        </label>
+
         <div className="top-actions">
-          <button className="icon-button" title="Sync" onClick={() => setComingSoonTitle("Cloud Sync")}>
-            <Cloud size={17} />
+          <button className="sync-avatar" title="Sync status" onClick={() => setComingSoonTitle("Sync")}>
+            <span />
           </button>
-          <button className="icon-button" title="Team" onClick={() => setComingSoonTitle("Team Collaboration")}>
-            <Users size={17} />
+          <button className="outline-action" onClick={() => setComingSoonTitle("Invite")}>
+            Invite
           </button>
-          <label className="environment-select">
-            <span>Environment</span>
-            <select value={activeEnvironmentId} onChange={(event) => setActiveEnvironment(event.target.value)}>
-              {environments.length === 0 ? (
-                <option value="">No environments</option>
-              ) : null}
-              {environments.map((environment) => (
-                <option key={environment.id} value={environment.id}>
-                  {environment.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={15} />
-          </label>
-          <button
-            className="icon-button"
-            title="Manage environments"
-            onClick={() => setShowEnvEditor(true)}
-          >
-            <Sliders size={17} />
+          <button className="upgrade-action" onClick={() => setComingSoonTitle("Upgrade")}>
+            Upgrade
           </button>
-          <button className="icon-button" title="Notifications" onClick={() => setComingSoonTitle("Notifications")}>
+          <button className="icon-button compact" title="Notifications" onClick={() => setComingSoonTitle("Notifications")}>
             <Bell size={17} />
           </button>
-          <button className="icon-button" title="Cookies" onClick={() => setShowCookieManager(true)}>
-            <Cookie size={17} />
+          <button className="icon-button compact" title="Settings" onClick={() => setComingSoonTitle("Global Settings")}>
+            <Settings size={17} />
           </button>
           {mounted && (
             <button
-              className="icon-button"
-              title="Toggle Theme"
+              className="icon-button compact"
+              title="Toggle theme"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             >
               {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
             </button>
           )}
-          <button className="icon-button" title="Settings" onClick={() => setComingSoonTitle("Global Settings")}>
-            <Settings size={17} />
+          <button className="profile-avatar" title="Profile" onClick={() => setComingSoonTitle("Profile")}>
+            AS
           </button>
         </div>
       </header>
-      {showEnvEditor ? <EnvironmentEditor onClose={() => setShowEnvEditor(false)} /> : null}
-      <CookieManagerDialog open={showCookieManager} onOpenChange={setShowCookieManager} />
       {comingSoonTitle ? <ComingSoonDialog title={comingSoonTitle} onClose={() => setComingSoonTitle(null)} /> : null}
     </>
   );

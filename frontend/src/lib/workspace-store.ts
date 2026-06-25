@@ -385,7 +385,7 @@ function apiNodeToDraft(node: CollectionApiNode): RequestDraft {
 // ---------------------------------------------------------------------------
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
-  activeSidebar: "collections",
+  activeSidebar: "history",
   activeTabId: "",
   activeEnvironmentId: "",
   builderTab: "params",

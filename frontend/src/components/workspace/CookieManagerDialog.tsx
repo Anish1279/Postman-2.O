@@ -73,7 +73,7 @@ export function CookieManagerDialog({ open, onOpenChange }: CookieManagerDialogP
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ margin: 0, opacity: 0.7, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Add Cookie</h4>
+            <h4 style={{ margin: 0, opacity: 0.7, fontSize: "12px", textTransform: "uppercase", letterSpacing: 0 }}>Add Cookie</h4>
             <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 2 }}>
                 <label style={{ fontSize: "12px" }}>Domain</label>
@@ -146,7 +146,7 @@ export function CookieManagerDialog({ open, onOpenChange }: CookieManagerDialogP
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ margin: 0, opacity: 0.7, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Saved Cookies</h4>
+            <h4 style={{ margin: 0, opacity: 0.7, fontSize: "12px", textTransform: "uppercase", letterSpacing: 0 }}>Saved Cookies</h4>
             {cookies.length === 0 ? (
               <div style={{ padding: "32px", textAlign: "center", opacity: 0.5, fontSize: "14px", border: "1px solid var(--border-color)", borderRadius: "6px" }}>
                 No cookies saved. Try sending a request that sets a cookie, or add one manually above.

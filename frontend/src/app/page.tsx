@@ -3,8 +3,8 @@ import { WorkspaceShell } from "@/components/WorkspaceShell";
 import type { WorkspaceLayout } from "@/lib/types";
 
 const fallbackLayout: WorkspaceLayout = {
-  horizontal: [23, 77],
-  vertical: [56, 44]
+  horizontal: [24, 57, 19],
+  vertical: [62, 38]
 };
 
 function parseLayout(value?: string): WorkspaceLayout {
@@ -14,7 +14,7 @@ function parseLayout(value?: string): WorkspaceLayout {
 
   try {
     const parsed = JSON.parse(value) as WorkspaceLayout;
-    const hasHorizontal = Array.isArray(parsed.horizontal) && parsed.horizontal.length === 2;
+    const hasHorizontal = Array.isArray(parsed.horizontal) && parsed.horizontal.length === 3;
     const hasVertical = Array.isArray(parsed.vertical) && parsed.vertical.length === 2;
     return hasHorizontal && hasVertical ? parsed : fallbackLayout;
   } catch {
@@ -28,4 +28,3 @@ export default async function Home() {
 
   return <WorkspaceShell defaultLayout={layout} />;
 }
-

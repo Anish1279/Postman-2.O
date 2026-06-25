@@ -7,6 +7,10 @@ import { useTheme } from "next-themes";
 
 const responseViews: ResponseView[] = ["pretty", "raw", "headers"];
 
+function responseViewLabel(view: ResponseView): string {
+  return view === "pretty" ? "Body" : view === "raw" ? "Raw" : "Headers";
+}
+
 function prettyBody(body: string): string {
   try {
     return JSON.stringify(JSON.parse(body), null, 2);
@@ -39,9 +43,12 @@ export function ResponsePanel() {
         <div className="response-tabs">
           {responseViews.map((view) => (
             <button key={view} className={responseView === view ? "active" : ""} onClick={() => setResponseView(view)}>
-              {view}
+              {responseViewLabel(view)}
             </button>
           ))}
+          <button className="tab-passive" type="button">
+            Test Results
+          </button>
         </div>
         {response ? (
           <div className="response-meta">
@@ -54,7 +61,13 @@ export function ResponsePanel() {
 
       <div className="response-body">
         {!response ? (
-          <div className="empty-response">No response</div>
+          <div className="empty-response postman-empty-response">
+            <span className="empty-response-icon">-</span>
+            <strong>Response not stored</strong>
+            <p>
+              <a href="#">Save response setting</a> must have been off when this request was sent.
+            </p>
+          </div>
         ) : responseView === "headers" ? (
           response.headers.length ? (
             <div className="headers-view">

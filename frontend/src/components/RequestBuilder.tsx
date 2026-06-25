@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Save, Send, Code2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, Code2, FileText, Link2, Save, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 import { KeyValueTable } from "@/components/KeyValueTable";
 import Editor from "@monaco-editor/react";
@@ -9,6 +9,7 @@ import { bodyModes, httpMethods, useWorkspaceStore } from "@/lib/workspace-store
 import { collectMissingVariables } from "@/lib/variable-resolver";
 import type { AuthConfig, BodyMode, BuilderTab, HttpMethod, RequestDraftSnapshot } from "@/lib/types";
 import { CodeSnippetDialog } from "@/components/CodeSnippetDialog";
+import { CookieManagerDialog } from "@/components/workspace/CookieManagerDialog";
 
 const builderTabs: BuilderTab[] = ["params", "authorization", "headers", "body", "pre-request", "tests"];
 const bodyModeLabels: Record<BodyMode, string> = {
@@ -19,7 +20,7 @@ const bodyModeLabels: Record<BodyMode, string> = {
 };
 
 function formatTabLabel(tab: BuilderTab): string {
-  return tab === "params" ? "Params" : tab === "authorization" ? "Authorization" : tab === "headers" ? "Headers" : tab === "body" ? "Body" : tab === "pre-request" ? "Pre-request" : "Tests";
+  return tab === "params" ? "Params" : tab === "authorization" ? "Authorization" : tab === "headers" ? "Headers" : tab === "body" ? "Body" : tab === "pre-request" ? "Scripts" : "Tests";
 }
 
 export function RequestBuilder() {
@@ -29,6 +30,7 @@ export function RequestBuilder() {
   const builderTab = useWorkspaceStore((state) => state.builderTab);
   const setBuilderTab = useWorkspaceStore((state) => state.setBuilderTab);
   const [showCode, setShowCode] = useState(false);
+  const [showCookies, setShowCookies] = useState(false);
   const updateActiveRequest = useWorkspaceStore((state) => state.updateActiveRequest);
   const updateActiveAuth = useWorkspaceStore((state) => state.updateActiveAuth);
   const updateKeyValue = useWorkspaceStore((state) => state.updateKeyValue);
@@ -53,31 +55,52 @@ export function RequestBuilder() {
 
   return (
     <section className="request-builder" key={activeTabId}>
+      <div className="request-titlebar">
+        <div className="request-title">
+          <span className="request-protocol">HTTP</span>
+          <strong>{activeRequest.name || activeRequest.url || "Untitled Request"}</strong>
+        </div>
+        <div className="request-title-actions">
+          <button className="text-icon-button" title="Save request to collection" onClick={saveActiveRequest}>
+            <Save size={16} />
+            Save
+          </button>
+          <button className="icon-button compact" title="Save menu">
+            <ChevronDown size={14} />
+          </button>
+          <button className="share-button">Share</button>
+          <button className="icon-button compact" title="Copy link">
+            <Link2 size={16} />
+          </button>
+        </div>
+      </div>
+
       <div className="request-bar">
-        <select
-          className={`method-select method-${activeRequest.method.toLowerCase()}`}
-          value={activeRequest.method}
-          onChange={(event) => updateActiveRequest({ method: event.target.value as HttpMethod })}
-        >
-          {httpMethods.map((method) => (
-            <option key={method} value={method}>
-              {method}
-            </option>
-          ))}
-        </select>
-        <input
-          className="url-input"
-          value={activeRequest.url}
-          onChange={(event) => updateActiveRequest({ url: event.target.value })}
-          placeholder="Enter request URL"
-        />
-        <button className="secondary-button" title="Save request to collection" onClick={saveActiveRequest}>
-          <Save size={16} />
-          Save
-        </button>
-        <button className="send-button" title="Send request" onClick={sendActiveRequest} disabled={activeRequest.isSending}>
+        <div className="method-url-control">
+          <select
+            className={`method-select method-${activeRequest.method.toLowerCase()}`}
+            value={activeRequest.method}
+            onChange={(event) => updateActiveRequest({ method: event.target.value as HttpMethod })}
+          >
+            {httpMethods.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
+          <input
+            className="url-input"
+            value={activeRequest.url}
+            onChange={(event) => updateActiveRequest({ url: event.target.value })}
+            placeholder="Enter request URL"
+          />
+        </div>
+        <button className="send-button primary-send" title="Send request" onClick={sendActiveRequest} disabled={activeRequest.isSending}>
           <Send size={16} />
           {activeRequest.isSending ? "Sending" : "Send"}
+        </button>
+        <button className="send-menu-button" title="Send options" disabled={activeRequest.isSending}>
+          <ChevronDown size={15} />
         </button>
       </div>
 
@@ -90,38 +113,56 @@ export function RequestBuilder() {
         </div>
       ) : null}
 
-      <div className="builder-tabs" style={{ display: "flex", gap: "8px", borderBottom: "1px solid var(--line)" }}>
+      <div className="builder-tabs">
+        <button className="tab-passive" type="button">
+          <FileText size={16} />
+          Docs
+        </button>
         {builderTabs.map((tab) => (
           <button key={tab} className={builderTab === tab ? "active" : ""} onClick={() => setBuilderTab(tab)}>
             {formatTabLabel(tab)}
+            {tab === "headers" ? <span className="tab-count">{activeRequest.headers.length}</span> : null}
+            {tab === "body" && activeRequest.bodyMode !== "none" ? <span className="green-dot" /> : null}
           </button>
         ))}
-        <button className="icon-button" style={{ marginLeft: "auto" }} title="Code Snippets" onClick={() => setShowCode(true)}>
+        <button className="tab-passive" type="button">
+          Settings
+        </button>
+        <button className="builder-cookies" type="button" onClick={() => setShowCookies(true)}>
+          Cookies
+        </button>
+        <button className="icon-button compact code-snippet-button" title="Code Snippets" onClick={() => setShowCode(true)}>
           <Code2 size={15} />
         </button>
       </div>
 
       <div className="builder-panel">
         {builderTab === "params" ? (
-          <KeyValueTable
-            rows={activeRequest.queryParams}
-            onChange={(rowId, patch) => updateKeyValue("queryParams", rowId, patch)}
-            onAdd={() => addKeyValue("queryParams")}
-            onRemove={(rowId) => removeKeyValue("queryParams", rowId)}
-            keyPlaceholder="Query key"
-            valuePlaceholder="Query value"
-          />
+          <>
+            <h3 className="panel-subheading">Query Params</h3>
+            <KeyValueTable
+              rows={activeRequest.queryParams}
+              onChange={(rowId, patch) => updateKeyValue("queryParams", rowId, patch)}
+              onAdd={() => addKeyValue("queryParams")}
+              onRemove={(rowId) => removeKeyValue("queryParams", rowId)}
+              keyPlaceholder="Key"
+              valuePlaceholder="Value"
+            />
+          </>
         ) : null}
 
         {builderTab === "headers" ? (
-          <KeyValueTable
-            rows={activeRequest.headers}
-            onChange={(rowId, patch) => updateKeyValue("headers", rowId, patch)}
-            onAdd={() => addKeyValue("headers")}
-            onRemove={(rowId) => removeKeyValue("headers", rowId)}
-            keyPlaceholder="Header"
-            valuePlaceholder="Value"
-          />
+          <>
+            <h3 className="panel-subheading">Headers</h3>
+            <KeyValueTable
+              rows={activeRequest.headers}
+              onChange={(rowId, patch) => updateKeyValue("headers", rowId, patch)}
+              onAdd={() => addKeyValue("headers")}
+              onRemove={(rowId) => removeKeyValue("headers", rowId)}
+              keyPlaceholder="Key"
+              valuePlaceholder="Value"
+            />
+          </>
         ) : null}
 
         {builderTab === "authorization" ? (
@@ -201,7 +242,7 @@ export function RequestBuilder() {
             {activeRequest.bodyMode === "none" ? <div className="empty-body-state">No body</div> : null}
 
             {activeRequest.bodyMode === "raw" ? (
-              <div style={{ height: "300px", border: "1px solid var(--border-color)", borderRadius: "4px", overflow: "hidden" }}>
+              <div className="editor-frame">
                 <Editor
                   height="100%"
                   defaultLanguage="json"
@@ -242,7 +283,7 @@ export function RequestBuilder() {
           </div>
         ) : null}
         {builderTab === "pre-request" ? (
-          <div style={{ height: "300px", border: "1px solid var(--border-color)", borderRadius: "4px", overflow: "hidden" }}>
+          <div className="editor-frame">
             <Editor
               height="100%"
               defaultLanguage="javascript"
@@ -260,7 +301,7 @@ export function RequestBuilder() {
         ) : null}
 
         {builderTab === "tests" ? (
-          <div style={{ height: "300px", border: "1px solid var(--border-color)", borderRadius: "4px", overflow: "hidden" }}>
+          <div className="editor-frame">
             <Editor
               height="100%"
               defaultLanguage="javascript"
@@ -279,6 +320,7 @@ export function RequestBuilder() {
       </div>
 
       {showCode ? <CodeSnippetDialog onClose={() => setShowCode(false)} /> : null}
+      <CookieManagerDialog open={showCookies} onOpenChange={setShowCookies} />
     </section>
   );
 }

@@ -7,6 +7,8 @@ import { RequestTabs } from "@/components/RequestTabs";
 import { ResponsePanel } from "@/components/ResponsePanel";
 import { Sidebar } from "@/components/Sidebar";
 import { TopNav } from "@/components/TopNav";
+import { AgentModePanel } from "@/components/AgentModePanel";
+import { BottomUtilityBar } from "@/components/BottomUtilityBar";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import type { WorkspaceLayout } from "@/lib/types";
 
@@ -51,11 +53,11 @@ export function WorkspaceShell({ defaultLayout }: WorkspaceShellProps) {
         className="workspace-panels"
         onLayout={(horizontal) => updateLayout({ horizontal })}
       >
-        <Panel defaultSize={defaultLayout.horizontal[0]} minSize={17} maxSize={32} className="sidebar-panel">
+        <Panel defaultSize={defaultLayout.horizontal[0]} minSize={17} maxSize={31} className="sidebar-panel">
           <Sidebar />
         </Panel>
         <PanelResizeHandle className="resize-handle resize-handle-vertical" />
-        <Panel defaultSize={defaultLayout.horizontal[1]} minSize={55}>
+        <Panel defaultSize={defaultLayout.horizontal[1]} minSize={48}>
           <section className="request-workspace">
             <RequestTabs />
             <PanelGroup
@@ -73,7 +75,12 @@ export function WorkspaceShell({ defaultLayout }: WorkspaceShellProps) {
             </PanelGroup>
           </section>
         </Panel>
+        <PanelResizeHandle className="resize-handle resize-handle-vertical" />
+        <Panel defaultSize={defaultLayout.horizontal[2] ?? 19} minSize={16} maxSize={24} className="agent-panel-shell">
+          <AgentModePanel />
+        </Panel>
       </PanelGroup>
+      <BottomUtilityBar />
     </main>
   );
 }

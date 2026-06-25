@@ -1,9 +1,9 @@
 "use client";
 
-import { Clock3, Edit2, FileText, Folder, FolderPlus, FilePlus, History, MoreHorizontal, Plus, Search, Settings, Trash2, X, Download, Upload } from "lucide-react";
+import { Box, Download, Edit2, FilePlus, FileText, Folder, FolderPlus, History, MoreHorizontal, Plus, Search, Server, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/lib/workspace-store";
-import type { CollectionNode } from "@/lib/types";
+import type { CollectionNode, HistoryEntry, HttpMethod } from "@/lib/types";
 import { ComingSoonDialog } from "@/components/ComingSoonDialog";
 import { exportWorkspace, importWorkspace } from "@/lib/api";
 import { toast } from "@/lib/toast";
@@ -283,6 +283,31 @@ function NewItemDialog({
 // Sidebar
 // ---------------------------------------------------------------------------
 
+function methodLabel(method: HttpMethod): string {
+  return method === "DELETE" ? "DEL" : method;
+}
+
+function historyDateLabel(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Recent";
+  }
+  return new Intl.DateTimeFormat("en", { month: "long", day: "numeric" }).format(date);
+}
+
+function groupHistory(history: HistoryEntry[]): Array<{ label: string; entries: HistoryEntry[] }> {
+  return history.reduce<Array<{ label: string; entries: HistoryEntry[] }>>((groups, item) => {
+    const label = historyDateLabel(item.requestedAt);
+    const existing = groups.find((group) => group.label === label);
+    if (existing) {
+      existing.entries.push(item);
+    } else {
+      groups.push({ label, entries: [item] });
+    }
+    return groups;
+  }, []);
+}
+
 export function Sidebar() {
   const [search, setSearch] = useState("");
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -305,6 +330,7 @@ export function Sidebar() {
     }
     return history.filter((item) => `${item.name} ${item.method} ${item.url}`.toLowerCase().includes(value));
   }, [history, search]);
+  const groupedHistory = useMemo(() => groupHistory(filteredHistory), [filteredHistory]);
 
   const handleContextRename = useCallback(() => {
     if (contextMenu) {
@@ -342,29 +368,30 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-tabs">
-        <button
-          className={activeSidebar === "collections" ? "active" : ""}
-          onClick={() => setActiveSidebar("collections")}
-        >
-          <Folder size={15} />
-          Collections
+      <div className="sidebar-mode-strip">
+        <button title="Collections" className={activeSidebar === "collections" ? "active" : ""} onClick={() => setActiveSidebar("collections")}>
+          <Box size={20} />
         </button>
-        <button className={activeSidebar === "history" ? "active" : ""} onClick={() => setActiveSidebar("history")}>
-          <History size={15} />
-          History
+        <button title="APIs" onClick={() => setComingSoonTitle("APIs")}>
+          <Server size={20} />
+        </button>
+        <button title="History" className={activeSidebar === "history" ? "active" : ""} onClick={() => setActiveSidebar("history")}>
+          <History size={20} />
+        </button>
+        <button title="Files" onClick={() => setComingSoonTitle("Files")}>
+          <Folder size={20} />
         </button>
       </div>
 
       <div className="sidebar-search">
-        <Search size={15} />
+        <Search size={14} />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
       </div>
 
-      <div className="sidebar-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>{activeSidebar === "collections" ? "Collections" : "Recent"}</span>
+      <div className="sidebar-heading">
+        <span>{activeSidebar === "collections" ? "Collections" : "Request History"}</span>
         {activeSidebar === "collections" ? (
-          <div style={{ display: "flex", gap: "4px" }}>
+          <div className="sidebar-heading-actions">
             <button className="icon-button compact" title="Import Workspace" onClick={() => {
               const fileInput = document.createElement("input");
               fileInput.type = "file";
@@ -431,29 +458,27 @@ export function Sidebar() {
           )
         ) : (
           <div className="history-list">
-            {filteredHistory.map((item) => (
-              <button className="history-row" key={item.id} onClick={() => openHistoryEntry(item.id)}>
-                <div className="method-badge compact-method">{item.method}</div>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>{item.url}</span>
-                </div>
-                <small>{item.status}</small>
-              </button>
-            ))}
+            {groupedHistory.length > 0 ? (
+              groupedHistory.map((group) => (
+                <section className="history-group" key={group.label}>
+                  <h3>{group.label}</h3>
+                  {group.entries.map((item) => (
+                    <button className="history-row" key={item.id} onClick={() => openHistoryEntry(item.id)}>
+                      <span className={`method-badge compact-method method-${item.method.toLowerCase()}`}>
+                        {methodLabel(item.method)}
+                      </span>
+                      <span className="history-url">{item.url}</span>
+                    </button>
+                  ))}
+                </section>
+              ))
+            ) : (
+              <div className="empty-sidebar-state">
+                <p>No request history</p>
+              </div>
+            )}
           </div>
         )}
-      </div>
-
-      <div className="sidebar-footer">
-        <button onClick={() => setComingSoonTitle("Monitors")}>
-          <Clock3 size={15} />
-          Monitors
-        </button>
-        <button onClick={() => setComingSoonTitle("Settings")}>
-          <Settings size={15} />
-          Settings
-        </button>
       </div>
 
       {/* Context menu */}
